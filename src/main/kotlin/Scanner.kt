@@ -46,6 +46,15 @@ class Scanner(
             '/' -> if (match('/')) {
                 // A comment goes until the end of the line.
                 while (peek() != '\n' && !isAtEnd()) advance()
+            } else if (match('*')) {
+                // A comment goes until finding a matching `*/`
+                while (peek() != '*' && peekNext() != '/' && !isAtEnd()) advance()
+                if (!isAtEnd()) {
+                    // The closing `*` and `/`
+                    advance()
+                    advance()
+                }
+                Unit
             } else {
                 addToken(TokenType.SLASH)
             }
