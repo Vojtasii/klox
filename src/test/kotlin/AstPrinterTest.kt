@@ -15,7 +15,7 @@ class AstPrinterTest : FunSpec({
                 Literal(45.67),
             ),
         )
-        val repr = AstPrinter().print(expression)
+        val repr = AstPrinter.visit(expression)
         repr shouldBe "(* (- 123) (group 45.67))"
     }
 })
