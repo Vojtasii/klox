@@ -125,10 +125,10 @@ class Parser(
      */
     private fun primary(): Expr {
         return when {
-            match(TokenType.NUMBER, TokenType.STRING) -> Literal(previous().literal)
-            match(TokenType.TRUE) -> Literal(true)
-            match(TokenType.FALSE) -> Literal(false)
-            match(TokenType.NIL) -> Literal(null)
+            match(TokenType.NUMBER, TokenType.STRING) -> Literal(previous().literal ?: LoxNil)
+            match(TokenType.TRUE) -> Literal(LoxBoolean(true))
+            match(TokenType.FALSE) -> Literal(LoxBoolean(false))
+            match(TokenType.NIL) -> Literal(LoxNil)
             match(TokenType.LEFT_PAREN) -> {
                 val expr = expression()
                 consume(TokenType.RIGHT_PAREN, "Expect ')' after expression.")

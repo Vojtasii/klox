@@ -92,7 +92,7 @@ class Scanner(
             advance()
             // Trim the surrounding quotes.
             val value = source.substring(start + 1, current - 1)
-            addToken(TokenType.STRING, value)
+            addToken(TokenType.STRING, LoxString(value))
         }
     }
 
@@ -106,7 +106,8 @@ class Scanner(
             while (peek().isDigit()) advance()
         }
 
-        addToken(TokenType.NUMBER, source.substring(start, current).toDoubleOrNull())
+        val value = source.substring(start, current).toDoubleOrNull()
+        addToken(TokenType.NUMBER, value?.let { LoxNumber(value) })
     }
 
     private fun match(expected: Char): Boolean =
@@ -131,7 +132,7 @@ class Scanner(
         lineStart = current
     }
 
-    private fun addToken(type: TokenType, literal: Any? = null) {
+    private fun addToken(type: TokenType, literal: LoxValue? = null) {
         val text = source.substring(start, current)
         tokens += Token(type, text, literal, line, start - lineStart)
     }

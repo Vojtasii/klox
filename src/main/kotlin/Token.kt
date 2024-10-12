@@ -3,7 +3,7 @@ package cz.vojtasii.lox
 data class Token(
     val type: TokenType,
     val lexeme: String,
-    val literal: Any?,
+    val literal: LoxValue?,
     val line: Int,
     val column: Int,
 ) {
