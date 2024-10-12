@@ -3,6 +3,7 @@ package cz.vojtasii.lox
 import java.io.File
 import kotlin.system.exitProcess
 
+
 object Lox {
 
     private var hadError: Boolean = false
@@ -31,7 +32,7 @@ object Lox {
             print("> ")
             val line = readlnOrNull() ?: break
             run(line)
-            hadError = false;
+            hadError = false
         }
     }
 
@@ -45,6 +46,14 @@ object Lox {
 
     fun error(line: Int, message: String) {
         report(line, "", message)
+    }
+
+    fun error(token: Token, message: String) {
+        if (token.type == TokenType.EOF) {
+            report(token.line, " at end", message)
+        } else {
+            report(token.line, " at '" + token.lexeme + "'", message)
+        }
     }
 
     private fun report(int: Int, where: String, message: String) {

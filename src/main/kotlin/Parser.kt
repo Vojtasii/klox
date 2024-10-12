@@ -1,11 +1,16 @@
 package cz.vojtasii.lox
 
-import kotlin.math.exp
-
 class Parser(
     private val tokens: List<Token>,
 ) {
     private var current = 0
+
+    fun parse(): Expr? =
+        try {
+            expression()
+        } catch (error: ParseError) {
+            null
+        }
 
     /**
      * expression → equality
@@ -102,7 +107,7 @@ class Parser(
                 consume(TokenType.RIGHT_PAREN, "Expect ')' after expression.")
                 Grouping(expr)
             }
-            else -> TODO()
+            else -> throw error(peek(), "Expect expression.")
         }
     }
 
@@ -114,7 +119,13 @@ class Parser(
         }
     }
 
-    private fun consume(type: TokenType, message: String): Unit = TODO()
+    private fun consume(type: TokenType, message: String): Token {
+        return if (check(type)) {
+            advance()
+        } else {
+            throw error(peek(), message)
+        }
+    }
 
     private fun check(type: TokenType): Boolean {
         return if (isAtEnd()) {
@@ -132,4 +143,33 @@ class Parser(
     private fun isAtEnd(): Boolean = peek().type == TokenType.EOF
     private fun peek(): Token = tokens[current]
     private fun previous(): Token = tokens[current - 1]
+
+    private fun error(token: Token, message: String): ParseError {
+        Lox.error(token, message)
+        return ParseError()
+    }
+
+    private fun synchronize() {
+        advance()
+
+        while (!isAtEnd()) {
+            if (previous().type == TokenType.SEMICOLON) return
+
+            when (peek().type) {
+                TokenType.CLASS,
+                TokenType.FUN,
+                TokenType.VAR,
+                TokenType.FOR,
+                TokenType.IF,
+                TokenType.WHILE,
+                TokenType.PRINT,
+                TokenType.RETURN -> return
+                else -> Unit
+            }
+
+            advance()
+        }
+    }
+
+    private class ParseError : RuntimeException()
 }
