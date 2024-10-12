@@ -7,10 +7,10 @@ class AstPrinterTest : FunSpec({
     test("print simple expression") {
         val expression = Binary(
             Unary(
-                Token(TokenType.MINUS, "-", null, 1),
+                Token(TokenType.MINUS, "-", null, 1 , 0),
                 Literal(123),
             ),
-            Token(TokenType.STAR, "*", null, 1),
+            Token(TokenType.STAR, "*", null, 1, 0),
             Grouping(
                 Literal(45.67),
             ),

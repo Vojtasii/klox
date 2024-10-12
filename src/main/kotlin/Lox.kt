@@ -47,20 +47,20 @@ object Lox {
         println(AstPrinter.visit(expression))
     }
 
-    fun error(line: Int, message: String) {
-        report(line, "", message)
+    fun error(line: Int, column: Int, message: String) {
+        report(line, column, "", message)
     }
 
     fun error(token: Token, message: String) {
         if (token.type == TokenType.EOF) {
-            report(token.line, " at end", message)
+            report(token.line, token.column, " at end", message)
         } else {
-            report(token.line, " at '" + token.lexeme + "'", message)
+            report(token.line, token.column, " at '" + token.lexeme + "'", message)
         }
     }
 
-    private fun report(int: Int, where: String, message: String) {
-        System.err.println("[line $int] Error$where: $message")
+    private fun report(line: Int, column: Int, where: String, message: String) {
+        System.err.println("[$line:$column] Error$where: $message")
         hadError = true
     }
 }

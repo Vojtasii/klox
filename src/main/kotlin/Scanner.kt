@@ -7,6 +7,7 @@ class Scanner(
     private var start = 0
     private var current = 0
     private var line = 1
+    private var lineStart = 0
 
     fun scanTokens(): List<Token> {
         while (!isAtEnd()) {
@@ -15,7 +16,7 @@ class Scanner(
             scanToken()
         }
 
-        tokens.add(Token(TokenType.EOF, "", null, line))
+        tokens.add(Token(TokenType.EOF, "", null, line, start - lineStart + 1))
         return tokens
     }
 
@@ -66,7 +67,7 @@ class Scanner(
             else -> when {
                 c.isDigit() -> number()
                 c.isAlpha() -> identifier()
-                else -> Lox.error(line, "Unexpected character.")
+                else -> Lox.error(line, start - lineStart, "Unexpected character.")
             }
         }
     }
@@ -85,7 +86,7 @@ class Scanner(
         }
 
         if (isAtEnd()) {
-            Lox.error(line, "Unterminated string.")
+            Lox.error(line, start - lineStart, "Unterminated string.")
         } else {
             // The closing `"`.
             advance()
@@ -127,11 +128,12 @@ class Scanner(
     private fun advance(): Char = source[current++]
     private fun newLine() {
         line++
+        lineStart = current
     }
 
     private fun addToken(type: TokenType, literal: Any? = null) {
         val text = source.substring(start, current)
-        tokens += Token(type, text, literal, line)
+        tokens += Token(type, text, literal, line, start - lineStart)
     }
 
     companion object {
