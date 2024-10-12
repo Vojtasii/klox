@@ -13,20 +13,36 @@ class Parser(
         }
 
     /**
-     * expression → equality ( "," equality )*
+     * expression → conditional ( "," conditional )*
      */
     private fun expression(): Expr {
-        var expr = equality()
+        var expr = conditional()
 
         // Comma binary operator.
         // Evaluate both left and right expressions, but use only the right expression.
         while (match(TokenType.COMMA)) {
             val operator = previous()
-            val right = equality()
+            val right = conditional()
             expr = Binary(expr, operator, right)
         }
 
         return expr
+    }
+
+    /**
+     * conditional → equality ( '?' equality ':' conditional )
+     */
+    private fun conditional(): Expr {
+        val expr = equality()
+
+        return if (match(TokenType.QUESTION)) {
+            val truly = equality()
+            consume(TokenType.COLON, "Expect ':' after first expression in ternary conditional.")
+            val falsy = conditional()
+            TernaryConditional(expr, truly, falsy)
+        } else {
+            expr
+        }
     }
 
     /**

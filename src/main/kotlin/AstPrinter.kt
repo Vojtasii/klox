@@ -7,6 +7,7 @@ object AstPrinter : ExprVisitor<String> {
         is Grouping -> parenthesize("group", expr.expression)
         is Literal -> expr.value?.toString() ?: "nil"
         is Unary -> parenthesize(expr.operator.lexeme, expr.right)
+        is TernaryConditional -> parenthesize("cond", expr.condition, expr.truly, expr.falsy)
     }
 
     private fun parenthesize(name: String, vararg exprs: Expr) = buildString {
