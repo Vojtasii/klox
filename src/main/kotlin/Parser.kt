@@ -13,10 +13,21 @@ class Parser(
         }
 
     /**
-     * expression → equality
+     * expression → equality ( "," equality )*
      */
-    private fun expression(): Expr =
-        equality()
+    private fun expression(): Expr {
+        var expr = equality()
+
+        // Comma binary operator.
+        // Evaluate both left and right expressions, but use only the right expression.
+        while (match(TokenType.COMMA)) {
+            val operator = previous()
+            val right = equality()
+            expr = Binary(expr, operator, right)
+        }
+
+        return expr
+    }
 
     /**
      * equality → comparison ( ( "!=" | "==" ) comparison )*
