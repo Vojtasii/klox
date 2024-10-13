@@ -46,20 +46,22 @@ class Scanner(
             '>' -> addToken(
                 if (match('=')) TokenType.GREATER_EQUAL else TokenType.GREATER
             )
-            '/' -> if (match('/')) {
-                // A comment goes until the end of the line.
-                while (peek() != '\n' && !isAtEnd()) advance()
-            } else if (match('*')) {
-                // A comment goes until finding a matching `*/`
-                while (peek() != '*' && peekNext() != '/' && !isAtEnd()) advance()
-                if (!isAtEnd()) {
-                    // The closing `*` and `/`
-                    advance()
-                    advance()
+            '/' -> when {
+                match('/') -> {
+                    // A comment goes until the end of the line.
+                    while (peek() != '\n' && !isAtEnd()) advance()
                 }
-                Unit
-            } else {
-                addToken(TokenType.SLASH)
+                match('*') -> {
+                    // A comment goes until finding a matching `*/`
+                    while (!(peek() == '*' && peekNext() == '/') && !isAtEnd()) advance()
+                    if (!isAtEnd()) {
+                        // The closing `*` and `/`
+                        advance()
+                        advance()
+                    }
+                    Unit
+                }
+                else -> addToken(TokenType.SLASH)
             }
             ' ', '\r', '\t' -> Unit // Ignore whitespace
             '\n' -> newLine()
