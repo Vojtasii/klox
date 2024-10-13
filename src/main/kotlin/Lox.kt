@@ -5,6 +5,8 @@ import kotlin.system.exitProcess
 
 
 object Lox {
+    const val MAX_ARGUMENTS = 255
+
     private var hadError: Boolean = false
     private var hadRuntimeError: Boolean = false
     private val interpreter = Interpreter()

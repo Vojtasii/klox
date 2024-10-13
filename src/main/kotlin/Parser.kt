@@ -337,7 +337,7 @@ class Parser(
 
     /**
      * unary → ( "!" | "-" ) unary
-     *       | primary
+     *       | call
      */
     private fun unary(): Expr {
         return if (match(TokenType.BANG, TokenType.MINUS)) {
@@ -345,8 +345,47 @@ class Parser(
             val right = unary()
             Unary(operator, right)
         } else {
-            primary()
+            call()
         }
+    }
+
+    /**
+     * call → primary ( "(" arguments? ")" )*
+     */
+    private fun call(): Expr {
+        var expr = primary()
+
+        while (true) {
+            if (match(TokenType.LEFT_PAREN)) {
+                expr = finishCall(expr)
+            } else {
+                break;
+            }
+        }
+
+        return expr
+    }
+
+    /**
+     * Implements 'arguments' rule while matching for ')'.
+     *
+     * arguments → expression ( "," expression )*
+     */
+    private fun finishCall(callee: Expr): Expr {
+        val arguments = if (check(TokenType.RIGHT_PAREN)) {
+            emptyList()
+        } else buildList {
+            if (size >= Lox.MAX_ARGUMENTS) {
+                error(peek(), "Can't have more than ${Lox.MAX_ARGUMENTS} arguments.");
+            }
+            do {
+                add(expression())
+            } while (match(TokenType.COMMA))
+        }
+
+        val paren = consume(TokenType.RIGHT_PAREN, "Expect ')' after arguments.")
+
+        return Call(callee, paren, arguments)
     }
 
     /**

@@ -9,6 +9,11 @@ sealed interface LoxValue {
         }
 }
 
+interface LoxCallable {
+    val arity: Int
+    fun call(interpreter: Interpreter, arguments: List<LoxValue>): LoxValue
+}
+
 data object LoxNil : LoxValue {
     override fun toString(): String = "nil"
 }
@@ -26,4 +31,8 @@ value class LoxNumber(val value: Double) : LoxValue {
 @JvmInline
 value class LoxString(val value: String) : LoxValue {
     override fun toString(): String = value
+}
+
+abstract class LoxNativeFun(override val arity: Int): LoxValue, LoxCallable {
+    override fun toString(): String = "<native fun>"
 }

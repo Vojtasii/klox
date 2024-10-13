@@ -4,6 +4,7 @@ object AstPrinter : ExprVisitor<String> {
 
     override fun visit(expr: Expr): String = when (expr) {
         is Binary -> parenthesize(expr.operator.lexeme, expr.left, expr.right)
+        is Call -> parenthesize(expr.callee.toString(), *expr.arguments.toTypedArray())
         is Grouping -> parenthesize("group", expr.expression)
         is Literal -> expr.value.toString()
         is Logical -> parenthesize(expr.operator.lexeme, expr.left, expr.right)

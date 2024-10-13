@@ -1,7 +1,7 @@
 package cz.vojtasii.lox
 
 class Interpreter(
-    private var environment: Environment = Environment(),
+    private var environment: Environment = globals,
 ) : ExprVisitor<LoxValue>, StmtVisitor<Unit> {
     private var breaking = false
 
@@ -71,6 +71,7 @@ class Interpreter(
             is Grouping -> visit(expr.expression)
             is Unary -> evaluateUnaryExpr(expr)
             is Binary -> evaluateBinaryExpr(expr)
+            is Call -> evaluateCallExpr(expr)
             is Variable -> environment[expr.name]
             is Assign -> visit(expr.value).also {
                 environment.assign(expr.name, it)
@@ -139,6 +140,19 @@ class Interpreter(
         }
     }
 
+    private fun evaluateCallExpr(expr: Call): LoxValue {
+        val callee = visit(expr.callee)
+
+        val arguments = expr.arguments.map(::visit)
+
+        val callable = callee as? LoxCallable
+            ?: throw RuntimeError(expr.paren, "Can only call functions and classes.")
+        if (arguments.size != callable.arity) {
+            throw RuntimeError(expr.paren, "Expected ${callable.arity} arguments, but got ${arguments.size}.")
+        }
+        return callable.call(this, arguments)
+    }
+
     private fun evaluateTernaryCondExpr(expr: TernaryConditional): LoxValue {
         val condition = visit(expr.condition)
 
@@ -166,5 +180,17 @@ class Interpreter(
     ): LoxValue = when {
         left is LoxNumber && right is LoxNumber -> block(left, right)
         else -> throw RuntimeError(operator, "Operands must be numbers.")
+    }
+
+    companion object {
+        private val globals: Environment = Environment().apply {
+            define(
+                "clock",
+                object : LoxNativeFun(0) {
+                    override fun call(interpreter: Interpreter, arguments: List<LoxValue>): LoxNumber =
+                        LoxNumber(System.currentTimeMillis() / 1000.0)
+                },
+            )
+        }
     }
 }
