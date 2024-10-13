@@ -57,6 +57,7 @@ class Interpreter(
     override fun visit(expr: Expr): LoxValue =
         when (expr) {
             is Literal -> expr.value
+            is Logical -> evaluateLogicalExpr(expr)
             is Grouping -> visit(expr.expression)
             is Unary -> evaluateUnaryExpr(expr)
             is Binary -> evaluateBinaryExpr(expr)
@@ -66,6 +67,16 @@ class Interpreter(
             }
             is TernaryConditional -> evaluateTernaryCondExpr(expr)
         }
+
+    private fun evaluateLogicalExpr(expr: Logical): LoxValue {
+        val left = visit(expr.left)
+
+        return when (expr.operator.type) {
+            TokenType.OR -> if (left.isTruthy) left else visit(expr.right)
+            TokenType.AND -> if (!left.isTruthy) left else visit(expr.right)
+            else -> throw RuntimeError(expr.operator, "Unexpected logical operator.")
+        }
+    }
 
     private fun evaluateUnaryExpr(expr: Unary): LoxValue {
         val right = visit(expr.right)

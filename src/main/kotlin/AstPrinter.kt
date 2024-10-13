@@ -6,6 +6,7 @@ object AstPrinter : ExprVisitor<String> {
         is Binary -> parenthesize(expr.operator.lexeme, expr.left, expr.right)
         is Grouping -> parenthesize("group", expr.expression)
         is Literal -> expr.value.toString()
+        is Logical -> parenthesize(expr.operator.lexeme, expr.left, expr.right)
         is Unary -> parenthesize(expr.operator.lexeme, expr.right)
         is Variable -> expr.name.lexeme
         is Assign -> parenthesize("let ${expr.name.lexeme}", expr.value)
