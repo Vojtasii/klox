@@ -5,12 +5,45 @@ class Parser(
 ) {
     private var current = 0
 
-    fun parse(): Expr? =
-        try {
-            expression()
-        } catch (error: ParseError) {
-            null
+    /**
+     * program → statement* EOF
+     */
+    fun parse(): List<Stmt> =
+        buildList {
+            while (!isAtEnd()) {
+                add(statement())
+            }
         }
+
+    /**
+     * statement → exprStmt
+     *           | printStmt
+     */
+    private fun statement(): Stmt {
+        return if (match(TokenType.PRINT)) {
+            printStatement()
+        } else {
+            expressionStatement()
+        }
+    }
+
+    /**
+     * printStmt → "print" expression ";"
+     */
+    private fun printStatement(): Stmt {
+        val expr = expression()
+        consume(TokenType.SEMICOLON, "Expect ';' after value.")
+        return Print(expr)
+    }
+
+    /**
+     * exprStmt → expression ";"
+     */
+    private fun expressionStatement(): Stmt {
+        val expr = expression()
+        consume(TokenType.SEMICOLON, "Expect ';' after value.")
+        return Expression(expr)
+    }
 
     /**
      * expression → conditional ( "," conditional )*
@@ -190,7 +223,8 @@ class Parser(
                 TokenType.IF,
                 TokenType.WHILE,
                 TokenType.PRINT,
-                TokenType.RETURN -> return
+                TokenType.RETURN,
+                    -> return
                 else -> Unit
             }
 

@@ -1,13 +1,28 @@
 package cz.vojtasii.lox
 
-class Interpreter : ExprVisitor<LoxValue> {
+class Interpreter : ExprVisitor<LoxValue>, StmtVisitor<Unit> {
 
-    fun interpret(expression: Expr) {
+    fun interpret(statements: List<Stmt>) {
         try {
-            val value = visit(expression)
-            println(value.toString())
+            for (statement in statements) {
+                execute(statement)
+            }
         } catch (error: RuntimeError) {
             Lox.runtimeError(error)
+        }
+    }
+
+    private fun execute(stmt: Stmt) {
+        visit(stmt)
+    }
+
+    override fun visit(stmt: Stmt) {
+        when (stmt) {
+            is Expression -> visit(stmt.expression)
+            is Print -> {
+                val value = visit(stmt.expression)
+                println(value)
+            }
         }
     }
 
