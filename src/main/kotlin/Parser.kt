@@ -2,6 +2,7 @@ package cz.vojtasii.lox
 
 class Parser(
     private val tokens: List<Token>,
+    private val mode: Mode = Mode.STANDARD,
 ) {
     private var current = 0
 
@@ -74,8 +75,17 @@ class Parser(
      */
     private fun expressionStatement(): Stmt {
         val expr = expression()
-        consume(TokenType.SEMICOLON, "Expect ';' after value.")
-        return Expression(expr)
+        return when (mode) {
+            Mode.STANDARD -> {
+                consume(TokenType.SEMICOLON, "Expect ';' after value.")
+                Expression(expr)
+            }
+            Mode.REPL -> when {
+                match(TokenType.SEMICOLON) -> Expression(expr)
+                isAtEnd() -> Print(expr)
+                else -> throw error(peek(), "Invalid expression or missing ';' after value.")
+            }
+        }
     }
 
     /**
@@ -301,6 +311,14 @@ class Parser(
 
             advance()
         }
+    }
+
+    enum class Mode {
+        // Only a list of statements.
+        STANDARD,
+
+        // Allow a list of statements, or a standalone expression interpreted as a print statement.
+        REPL,
     }
 
     private class ParseError : RuntimeException()

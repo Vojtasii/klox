@@ -23,7 +23,7 @@ object Lox {
 
     private fun runFile(file: String) {
         val source = File(file).readText()
-        run(source)
+        run(source, Parser.Mode.STANDARD)
         // Indicate an error in the exit code.
         if (hadError) exitProcess(65)
         if (hadRuntimeError) exitProcess(70)
@@ -33,15 +33,15 @@ object Lox {
         while (true) {
             print("> ")
             val line = readlnOrNull() ?: break
-            run(line)
+            run(line, Parser.Mode.REPL)
             hadError = false
         }
     }
 
-    private fun run(source: String) {
+    private fun run(source: String, mode: Parser.Mode) {
         val scanner = Scanner(source)
         val tokens = scanner.scanTokens()
-        val parser = Parser(tokens)
+        val parser = Parser(tokens, mode)
         val statements = parser.parse()
 
         if (hadError) return
