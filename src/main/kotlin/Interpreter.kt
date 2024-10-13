@@ -19,7 +19,7 @@ class Interpreter(
         visit(statement)
     }
 
-    private fun executeBlock(
+    fun executeBlock(
         statements: List<Stmt>,
         environment: Environment,
     ) {
@@ -39,6 +39,10 @@ class Interpreter(
     override fun visit(stmt: Stmt) {
         when (stmt) {
             is Expression -> visit(stmt.expression)
+            is Function -> {
+                val function = LoxFunction(stmt, environment)
+                environment.define(stmt.name.lexeme, function)
+            }
             is If -> if (visit(stmt.condition).isTruthy) {
                 execute(stmt.thenBranch)
             } else if (stmt.elseBranch != null) {
@@ -47,6 +51,10 @@ class Interpreter(
             is Print -> {
                 val value = visit(stmt.expression)
                 println(value)
+            }
+            is Return -> {
+                val value = stmt.value?.let { visit(it) } ?: LoxNil
+                throw ReturnJump(value)
             }
             is Var -> {
                 val value = stmt.initializer?.let { visit(it) } ?: LoxNil
@@ -183,7 +191,7 @@ class Interpreter(
     }
 
     companion object {
-        private val globals: Environment = Environment().apply {
+        val globals: Environment = Environment().apply {
             define(
                 "clock",
                 object : LoxNativeFun(0) {

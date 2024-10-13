@@ -21,14 +21,15 @@ class Parser(
         }
 
     /**
-     * declaration → varDecl
+     * declaration → "fun" function
+     *             | "var" varDecl
      *             | statement
      */
     private fun declaration(): Stmt? = try {
-        if (match(TokenType.VAR)) {
-            varDeclaration()
-        } else {
-            statement()
+        when {
+            match(TokenType.FUN) -> function(Function.Kind.FUNCTION)
+            match(TokenType.VAR) -> varDeclaration()
+            else -> statement()
         }
     } catch (error: ParseError) {
         synchronize()
@@ -36,7 +37,7 @@ class Parser(
     }
 
     /**
-     * varDecl → "var" IDENTIFIER ( "=" expression )? ";"
+     * varDecl → IDENTIFIER ( "=" expression )? ";"
      */
     private fun varDeclaration(): Stmt {
         val name = consume(TokenType.IDENTIFIER, "Expect variable name.")
@@ -64,7 +65,7 @@ class Parser(
     }
 
     /**
-     * forStmt → "for" "(" ( varDecl | exprStmt | ";" ) expression? ";" expression? ")" statement
+     * forStmt → "for" "(" ( "var" varDecl | exprStmt | ";" ) expression? ";" expression? ")" statement
      */
     private fun forStatement(): Stmt {
         loopDepth++
@@ -111,6 +112,7 @@ class Parser(
      *           | ifStmt
      *           | printStmt
      *           | whileStmt
+     *           | returnStmt
      *           | breakStmt
      *           | block
      */
@@ -119,6 +121,7 @@ class Parser(
             match(TokenType.FOR) -> forStatement()
             match(TokenType.IF) -> ifStatement()
             match(TokenType.PRINT) -> printStatement()
+            match(TokenType.RETURN) -> returnStatement()
             match(TokenType.WHILE) -> whileStatement()
             match(TokenType.BREAK) -> breakStatement()
             match(TokenType.LEFT_BRACE) -> Block(block())
@@ -150,6 +153,17 @@ class Parser(
     }
 
     /**
+     * returnStmt → "return" expression? ";"
+     */
+    private fun returnStatement(): Stmt {
+        val keyword = previous()
+        val value = if (check(TokenType.SEMICOLON)) null else expression()
+
+        consume(TokenType.SEMICOLON, "Expect ';' after return value.")
+        return Return(keyword, value)
+    }
+
+    /**
      * exprStmt → expression ";"
      */
     private fun expressionStatement(): Stmt {
@@ -165,6 +179,31 @@ class Parser(
                 else -> throw error(peek(), "Invalid expression or missing ';' after value.")
             }
         }
+    }
+
+    /**
+     * function   → IDENTIFIER "(" parameters? ")" block
+     * parameters → IDENTIFIER ( "," IDENTIFIER )*
+     */
+    private fun function(kind: Function.Kind): Function {
+        val name = consume(TokenType.IDENTIFIER, "Expect $kind name.")
+        consume(TokenType.LEFT_PAREN, "Expect '(' after $kind name.")
+        val parameters = if (check(TokenType.RIGHT_PAREN)) {
+            emptyList()
+        } else buildList {
+            do {
+                if (size >= Lox.MAX_ARGUMENTS) {
+                    error(peek(), "Can't have more than ${Lox.MAX_ARGUMENTS} parameters.")
+                }
+
+                add(consume(TokenType.IDENTIFIER, "Expect parameter name."))
+            } while (match(TokenType.COMMA))
+        }
+        consume(TokenType.RIGHT_PAREN, "Expect ')' after parameters.")
+
+        consume(TokenType.LEFT_BRACE, "Expect '{' before $kind body.")
+        val body = block()
+        return Function(name, parameters, body)
     }
 
     private fun breakStatement(): Stmt {
@@ -359,7 +398,7 @@ class Parser(
             if (match(TokenType.LEFT_PAREN)) {
                 expr = finishCall(expr)
             } else {
-                break;
+                break
             }
         }
 
@@ -369,17 +408,17 @@ class Parser(
     /**
      * Implements 'arguments' rule while matching for ')'.
      *
-     * arguments → expression ( "," expression )*
+     * arguments → argument ( "," argument )*
      */
     private fun finishCall(callee: Expr): Expr {
         val arguments = if (check(TokenType.RIGHT_PAREN)) {
             emptyList()
         } else buildList {
             if (size >= Lox.MAX_ARGUMENTS) {
-                error(peek(), "Can't have more than ${Lox.MAX_ARGUMENTS} arguments.");
+                error(peek(), "Can't have more than ${Lox.MAX_ARGUMENTS} arguments.")
             }
             do {
-                add(expression())
+                add(argument())
             } while (match(TokenType.COMMA))
         }
 
@@ -387,6 +426,13 @@ class Parser(
 
         return Call(callee, paren, arguments)
     }
+
+    /**
+     * Expression that disallows ',' operator.
+     *
+     * argument → conditional
+     */
+    private fun argument(): Expr = conditional()
 
     /**
      * primary → NUMBER | STRING | "true" | "false" | "nil"
