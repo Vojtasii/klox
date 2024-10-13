@@ -37,6 +37,11 @@ class Interpreter(
     override fun visit(stmt: Stmt) {
         when (stmt) {
             is Expression -> visit(stmt.expression)
+            is If -> if (visit(stmt.condition).isTruthy) {
+                execute(stmt.thenBranch)
+            } else if (stmt.elseBranch != null) {
+                execute(stmt.elseBranch)
+            }
             is Print -> {
                 val value = visit(stmt.expression)
                 println(value)

@@ -50,15 +50,31 @@ class Parser(
 
     /**
      * statement → exprStmt
+     *           | ifStmt
      *           | printStmt
      *           | block
      */
     private fun statement(): Stmt {
         return when {
+            match(TokenType.IF) -> ifStatement()
             match(TokenType.PRINT) -> printStatement()
             match(TokenType.LEFT_BRACE) -> Block(block())
             else -> expressionStatement()
         }
+    }
+
+    /**
+     * ifStmt → "if" "(" expression ")" statement ( "else" statement )?
+     */
+    private fun ifStatement(): Stmt {
+        consume(TokenType.LEFT_PAREN, "Expect '(' after 'if'.")
+        val condition = expression()
+        consume(TokenType.RIGHT_PAREN, "Expect ')' after if condition.")
+
+        val thenBranch = statement()
+        val elseBranch = if (match(TokenType.ELSE)) statement() else null
+
+        return If(condition, thenBranch, elseBranch)
     }
 
     /**
