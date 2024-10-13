@@ -32,13 +32,16 @@ class Interpreter(
         }
     }
 
-    override tailrec fun visit(expr: Expr): LoxValue =
+    override fun visit(expr: Expr): LoxValue =
         when (expr) {
             is Literal -> expr.value
             is Grouping -> visit(expr.expression)
             is Unary -> evaluateUnaryExpr(expr)
             is Binary -> evaluateBinaryExpr(expr)
             is Variable -> environment[expr.name]
+            is Assign -> visit(expr.value).also {
+                environment.assign(expr.name, it)
+            }
             is TernaryConditional -> evaluateTernaryCondExpr(expr)
         }
 

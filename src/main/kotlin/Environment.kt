@@ -7,6 +7,13 @@ class Environment {
         values[name] = value
     }
 
+    fun assign(name: Token, value: LoxValue) =
+        if (name.lexeme in values) {
+            values[name.lexeme] = value
+        } else {
+            throw RuntimeError(name, "Undefined variable '${name.lexeme}'.")
+        }
+
     operator fun get(name: Token): LoxValue =
         values.getOrElse(name.lexeme) {
             throw RuntimeError(name, "Undefined variable '${name.lexeme}'.")

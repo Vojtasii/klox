@@ -95,19 +95,41 @@ class Parser(
     }
 
     /**
-     * conditional → equality ( '?' equality ':' conditional )
+     * conditional → assignment ( '?' assignment ':' conditional )
      */
     private fun conditional(): Expr {
-        val expr = equality()
+        val expr = assignment()
 
         return if (match(TokenType.QUESTION)) {
-            val truly = equality()
+            val truly = assignment()
             consume(TokenType.COLON, "Expect ':' after first expression in ternary conditional.")
             val falsy = conditional()
             TernaryConditional(expr, truly, falsy)
         } else {
             expr
         }
+    }
+
+    /**
+     * assignment → IDENTIFIER "=" assignment
+     *            | equality
+     */
+    private fun assignment(): Expr {
+        val expr = equality()
+
+        if (match(TokenType.EQUAL)) {
+            val equals = previous()
+            val value = assignment()
+
+            if (expr is Variable) {
+                val name = expr.name
+                return Assign(name, value)
+            } else {
+                error(equals, "Invalid assignment target.")
+            }
+        }
+
+        return expr
     }
 
     /**

@@ -8,6 +8,7 @@ object AstPrinter : ExprVisitor<String> {
         is Literal -> expr.value.toString()
         is Unary -> parenthesize(expr.operator.lexeme, expr.right)
         is Variable -> expr.name.lexeme
+        is Assign -> parenthesize("let ${expr.name.lexeme}", expr.value)
         is TernaryConditional -> parenthesize("cond", expr.condition, expr.truly, expr.falsy)
     }
 
