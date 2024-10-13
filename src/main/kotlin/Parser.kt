@@ -11,9 +11,41 @@ class Parser(
     fun parse(): List<Stmt> =
         buildList {
             while (!isAtEnd()) {
-                add(statement())
+                val decl = declaration()
+                if (decl != null) {
+                    add(decl)
+                }
             }
         }
+
+    /**
+     * declaration → varDecl
+     *             | statement
+     */
+    private fun declaration(): Stmt? = try {
+        if (match(TokenType.VAR)) {
+            varDeclaration()
+        } else {
+            statement()
+        }
+    } catch (error: ParseError) {
+        synchronize()
+        null
+    }
+
+    /**
+     * varDecl → "var" IDENTIFIER ( "=" expression )? ";"
+     */
+    private fun varDeclaration(): Stmt {
+        val name = consume(TokenType.IDENTIFIER, "Expect variable name.")
+
+        val initializer = if (match(TokenType.EQUAL)) expression() else null
+
+        consume(TokenType.SEMICOLON, "Expect ';' after variable declaration.")
+
+        return Var(name, initializer)
+    }
+
 
     /**
      * statement → exprStmt
@@ -155,6 +187,7 @@ class Parser(
     /**
      * primary → NUMBER | STRING | "true" | "false" | "nil"
      *         | "(" expression ")"
+     *         | IDENTIFIER
      */
     private fun primary(): Expr {
         return when {
@@ -167,6 +200,7 @@ class Parser(
                 consume(TokenType.RIGHT_PAREN, "Expect ')' after expression.")
                 Grouping(expr)
             }
+            match(TokenType.IDENTIFIER) -> Variable(previous())
             else -> throw error(peek(), "Expect expression.")
         }
     }

@@ -26,7 +26,7 @@ object Lox {
         run(source)
         // Indicate an error in the exit code.
         if (hadError) exitProcess(65)
-        if (hadRuntimeError) exitProcess(70);
+        if (hadRuntimeError) exitProcess(70)
     }
 
     private fun runPrompt() {

@@ -1,6 +1,8 @@
 package cz.vojtasii.lox
 
-class Interpreter : ExprVisitor<LoxValue>, StmtVisitor<Unit> {
+class Interpreter(
+    private val environment: Environment = Environment()
+) : ExprVisitor<LoxValue>, StmtVisitor<Unit> {
 
     fun interpret(statements: List<Stmt>) {
         try {
@@ -23,6 +25,10 @@ class Interpreter : ExprVisitor<LoxValue>, StmtVisitor<Unit> {
                 val value = visit(stmt.expression)
                 println(value)
             }
+            is Var -> {
+                val value = stmt.initializer?.let { visit(it) } ?: LoxNil
+                environment.define(stmt.name.lexeme, value)
+            }
         }
     }
 
@@ -32,6 +38,7 @@ class Interpreter : ExprVisitor<LoxValue>, StmtVisitor<Unit> {
             is Grouping -> visit(expr.expression)
             is Unary -> evaluateUnaryExpr(expr)
             is Binary -> evaluateBinaryExpr(expr)
+            is Variable -> environment[expr.name]
             is TernaryConditional -> evaluateTernaryCondExpr(expr)
         }
 
