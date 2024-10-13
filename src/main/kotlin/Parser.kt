@@ -5,6 +5,7 @@ class Parser(
     private val mode: Mode = Mode.STANDARD,
 ) {
     private var current = 0
+    private var loopDepth = 0
 
     /**
      * program → statement* EOF
@@ -51,18 +52,22 @@ class Parser(
      * whileStmt → "while" "(" expression ")" statement
      */
     private fun whileStatement(): Stmt {
+        loopDepth++
         consume(TokenType.LEFT_PAREN, "Expect '(' after 'while'.")
         val condition = expression()
         consume(TokenType.RIGHT_PAREN, "Expect ')' after condition.")
         val body = statement()
 
-        return While(condition, body)
+        return While(condition, body).also {
+            loopDepth--
+        }
     }
 
     /**
      * forStmt → "for" "(" ( varDecl | exprStmt | ";" ) expression? ";" expression? ")" statement
      */
     private fun forStatement(): Stmt {
+        loopDepth++
         consume(TokenType.LEFT_PAREN, "Expect '(' after 'for'.")
 
         val initializer = when {
@@ -95,7 +100,9 @@ class Parser(
             body = Block(listOf(initializer, body))
         }
 
-        return body
+        return body.also {
+            loopDepth--
+        }
     }
 
     /**
@@ -104,6 +111,7 @@ class Parser(
      *           | ifStmt
      *           | printStmt
      *           | whileStmt
+     *           | breakStmt
      *           | block
      */
     private fun statement(): Stmt {
@@ -112,6 +120,7 @@ class Parser(
             match(TokenType.IF) -> ifStatement()
             match(TokenType.PRINT) -> printStatement()
             match(TokenType.WHILE) -> whileStatement()
+            match(TokenType.BREAK) -> breakStatement()
             match(TokenType.LEFT_BRACE) -> Block(block())
             else -> expressionStatement()
         }
@@ -156,6 +165,15 @@ class Parser(
                 else -> throw error(peek(), "Invalid expression or missing ';' after value.")
             }
         }
+    }
+
+    private fun breakStatement(): Stmt {
+        val breakToken = previous()
+        if (loopDepth <= 0) {
+            error(breakToken, "Statement 'break' is allowed only inside a loop.")
+        }
+        consume(TokenType.SEMICOLON, "Expect ';' after 'break'.")
+        return Break
     }
 
     /**

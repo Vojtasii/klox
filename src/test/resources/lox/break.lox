@@ -1,0 +1,16 @@
+var i = 0;
+while (true) {
+    print i;
+    if (i >= 5) {
+        if (true) {
+            while (true) {
+                print "breaking innermost";
+                break;
+            }
+            print "breaking";
+            break;
+        }
+        print "should never run";
+    }
+    i = i + 1;
+}
