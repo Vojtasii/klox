@@ -48,7 +48,8 @@ class Interpreter : ExprVisitor<LoxValue> {
             }
             TokenType.PLUS -> when {
                 left is LoxNumber && right is LoxNumber -> LoxNumber(left.value + right.value)
-                left is LoxString && right is LoxString -> LoxString(left.value + right.value)
+                left is LoxString -> LoxString(left.value + right.toString())
+                right is LoxString -> LoxString(left.toString() + right.value)
                 else -> throw RuntimeError(expr.operator, "Expect numbers or strings")
             }
             TokenType.GREATER -> expectNumbers(expr.operator, left, right) { l, r ->
