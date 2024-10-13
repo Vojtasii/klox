@@ -50,6 +50,9 @@ class Interpreter(
                 val value = stmt.initializer?.let { visit(it) } ?: LoxNil
                 environment.define(stmt.name.lexeme, value)
             }
+            is While -> while (visit(stmt.condition).isTruthy) {
+                execute(stmt.body)
+            }
             is Block -> executeBlock(stmt.statements, Environment(environment))
         }
     }

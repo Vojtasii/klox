@@ -47,17 +47,71 @@ class Parser(
         return Var(name, initializer)
     }
 
+    /**
+     * whileStmt → "while" "(" expression ")" statement
+     */
+    private fun whileStatement(): Stmt {
+        consume(TokenType.LEFT_PAREN, "Expect '(' after 'while'.")
+        val condition = expression()
+        consume(TokenType.RIGHT_PAREN, "Expect ')' after condition.")
+        val body = statement()
+
+        return While(condition, body)
+    }
+
+    /**
+     * forStmt → "for" "(" ( varDecl | exprStmt | ";" ) expression? ";" expression? ")" statement
+     */
+    private fun forStatement(): Stmt {
+        consume(TokenType.LEFT_PAREN, "Expect '(' after 'for'.")
+
+        val initializer = when {
+            match(TokenType.SEMICOLON) -> null
+            match(TokenType.VAR) -> varDeclaration()
+            else -> expressionStatement()
+        }
+
+        val condition = when {
+            !check(TokenType.SEMICOLON) -> expression()
+            else -> Literal(LoxBoolean(true))
+        }
+        consume(TokenType.SEMICOLON, "Expect ';' after loop condition.")
+
+        val increment = when {
+            !check(TokenType.RIGHT_PAREN) -> expression()
+            else -> null
+        }
+        consume(TokenType.RIGHT_PAREN, "Expect ')' after for clauses.")
+
+        var body = statement()
+
+        if (increment != null) {
+            body = Block(listOf(body, Expression(increment)))
+        }
+
+        body = While(condition, body)
+
+        if (initializer != null) {
+            body = Block(listOf(initializer, body))
+        }
+
+        return body
+    }
 
     /**
      * statement → exprStmt
+     *           | forStmt
      *           | ifStmt
      *           | printStmt
+     *           | whileStmt
      *           | block
      */
     private fun statement(): Stmt {
         return when {
+            match(TokenType.FOR) -> forStatement()
             match(TokenType.IF) -> ifStatement()
             match(TokenType.PRINT) -> printStatement()
+            match(TokenType.WHILE) -> whileStatement()
             match(TokenType.LEFT_BRACE) -> Block(block())
             else -> expressionStatement()
         }
