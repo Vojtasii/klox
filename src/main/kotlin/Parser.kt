@@ -27,7 +27,15 @@ class Parser(
      */
     private fun declaration(): Stmt? = try {
         when {
-            match(TokenType.FUN) -> function(Function.Kind.FUNCTION)
+            match(TokenType.FUN) -> when (peek().type) {
+                TokenType.IDENTIFIER -> function(Function.Kind.FUNCTION)
+                else -> {
+                    // Special-case handling for a potential anonymous function in expression statement.
+                    // Unparse 'fun'.
+                    recede()
+                    expressionStatement()
+                }
+            }
             match(TokenType.VAR) -> varDeclaration()
             else -> statement()
         }
@@ -182,13 +190,24 @@ class Parser(
     }
 
     /**
-     * function   → IDENTIFIER "(" parameters? ")" block
-     * parameters → IDENTIFIER ( "," IDENTIFIER )*
+     * function → IDENTIFIER "(" parameters? ")" block
      */
     private fun function(kind: Function.Kind): Function {
         val name = consume(TokenType.IDENTIFIER, "Expect $kind name.")
         consume(TokenType.LEFT_PAREN, "Expect '(' after $kind name.")
-        val parameters = if (check(TokenType.RIGHT_PAREN)) {
+        val parameters = parameters()
+        consume(TokenType.RIGHT_PAREN, "Expect ')' after parameters.")
+
+        consume(TokenType.LEFT_BRACE, "Expect '{' before $kind body.")
+        val body = block()
+        return Function(name, parameters, body)
+    }
+
+    /**
+     * parameters → IDENTIFIER ( "," IDENTIFIER )*
+     */
+    private fun parameters(): List<Token> {
+        return if (check(TokenType.RIGHT_PAREN)) {
             emptyList()
         } else buildList {
             do {
@@ -199,11 +218,6 @@ class Parser(
                 add(consume(TokenType.IDENTIFIER, "Expect parameter name."))
             } while (match(TokenType.COMMA))
         }
-        consume(TokenType.RIGHT_PAREN, "Expect ')' after parameters.")
-
-        consume(TokenType.LEFT_BRACE, "Expect '{' before $kind body.")
-        val body = block()
-        return Function(name, parameters, body)
     }
 
     private fun breakStatement(): Stmt {
@@ -450,6 +464,15 @@ class Parser(
                 consume(TokenType.RIGHT_PAREN, "Expect ')' after expression.")
                 Grouping(expr)
             }
+            match(TokenType.FUN) -> {
+                consume(TokenType.LEFT_PAREN, "Expect '(' after 'fun'.")
+                val parameters = parameters()
+                consume(TokenType.RIGHT_PAREN, "Expect ')' after parameters.")
+
+                consume(TokenType.LEFT_BRACE, "Expect '{' before anonymous function body.")
+                val body = block()
+                AnonymousFunction(parameters, body)
+            }
             match(TokenType.IDENTIFIER) -> Variable(previous())
             else -> throw error(peek(), "Expect expression.")
         }
@@ -482,6 +505,11 @@ class Parser(
     private fun advance(): Token {
         if (!isAtEnd()) current++
         return previous()
+    }
+
+    private fun recede(): Token {
+        if (current > 0) current--
+        return peek()
     }
 
     private fun isAtEnd(): Boolean = peek().type == TokenType.EOF

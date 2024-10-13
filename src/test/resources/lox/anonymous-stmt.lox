@@ -1,0 +1,10 @@
+/*
+ * Anonymous function that returns an anonymous function.
+ * The 'fun' token is ambiguous between function declaration and anonymous function.
+ * We need the absence of an identifier to decide which it is.
+ */
+fun (p) {
+    return fun (n) {
+        print p * n;
+    };
+}(6)(7);

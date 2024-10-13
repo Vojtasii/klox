@@ -34,29 +34,40 @@ value class LoxString(val value: String) : LoxValue {
 }
 
 data class LoxFunction(
-    val declaration: Function,
+    val name: String,
+    val params: List<Token>,
+    val body: List<Stmt>,
     val closure: Environment,
 ) : LoxValue, LoxCallable {
-    override val arity: Int = declaration.params.size
+
+    constructor(declaration: Function, closure: Environment) : this(
+        declaration.name.lexeme, declaration.params, declaration.body, closure
+    )
+
+    constructor(declaration: AnonymousFunction, closure: Environment) : this(
+        "(anonymous)", declaration.params, declaration.body, closure
+    )
+
+    override val arity: Int = params.size
 
     override fun call(interpreter: Interpreter, arguments: List<LoxValue>): LoxValue {
         val environment = Environment(closure)
-        require(declaration.params.size == arguments.size) {
+        require(params.size == arguments.size) {
             "Arguments and parameters have different arity."
         }
-        declaration.params.zip(arguments).forEach { (param, arg) ->
+        params.zip(arguments).forEach { (param, arg) ->
             environment.define(param.lexeme, arg)
         }
 
         return try {
-            interpreter.executeBlock(declaration.body, environment)
+            interpreter.executeBlock(body, environment)
             LoxNil
         } catch (returnJump: ReturnJump) {
             returnJump.value
         }
     }
 
-    override fun toString(): String = "<fun ${declaration.name.lexeme}>"
+    override fun toString(): String = "<fun $name>"
 }
 
 abstract class LoxNativeFun(override val arity: Int) : LoxValue, LoxCallable {

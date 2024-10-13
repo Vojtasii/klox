@@ -76,6 +76,7 @@ class Interpreter(
             is Grouping -> visit(expr.expression)
             is Unary -> evaluateUnaryExpr(expr)
             is Binary -> evaluateBinaryExpr(expr)
+            is AnonymousFunction -> LoxFunction(expr, environment)
             is Call -> evaluateCallExpr(expr)
             is Variable -> environment[expr.name]
             is Assign -> visit(expr.value).also {
