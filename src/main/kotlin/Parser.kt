@@ -50,12 +50,13 @@ class Parser(
     /**
      * statement → exprStmt
      *           | printStmt
+     *           | block
      */
     private fun statement(): Stmt {
-        return if (match(TokenType.PRINT)) {
-            printStatement()
-        } else {
-            expressionStatement()
+        return when {
+            match(TokenType.PRINT) -> printStatement()
+            match(TokenType.LEFT_BRACE) -> Block(block())
+            else -> expressionStatement()
         }
     }
 
@@ -75,6 +76,20 @@ class Parser(
         val expr = expression()
         consume(TokenType.SEMICOLON, "Expect ';' after value.")
         return Expression(expr)
+    }
+
+    /**
+     * block → "{" declaration* "}"
+     */
+    private fun block(): List<Stmt> = buildList {
+        while (!check(TokenType.RIGHT_BRACE) && !isAtEnd()) {
+            val decl = declaration()
+            if (decl != null) {
+                add(decl)
+            }
+        }
+
+        consume(TokenType.RIGHT_BRACE, "Expect '}' after block.")
     }
 
     /**

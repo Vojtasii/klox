@@ -1,7 +1,7 @@
 package cz.vojtasii.lox
 
 class Interpreter(
-    private val environment: Environment = Environment()
+    private var environment: Environment = Environment(),
 ) : ExprVisitor<LoxValue>, StmtVisitor<Unit> {
 
     fun interpret(statements: List<Stmt>) {
@@ -14,8 +14,24 @@ class Interpreter(
         }
     }
 
-    private fun execute(stmt: Stmt) {
-        visit(stmt)
+    private fun execute(statement: Stmt) {
+        visit(statement)
+    }
+
+    private fun executeBlock(
+        statements: List<Stmt>,
+        environment: Environment,
+    ) {
+        val previous = this.environment
+        try {
+            this.environment = environment
+
+            for (statement in statements) {
+                execute(statement)
+            }
+        } finally {
+            this.environment = previous
+        }
     }
 
     override fun visit(stmt: Stmt) {
@@ -29,6 +45,7 @@ class Interpreter(
                 val value = stmt.initializer?.let { visit(it) } ?: LoxNil
                 environment.define(stmt.name.lexeme, value)
             }
+            is Block -> executeBlock(stmt.statements, Environment(environment))
         }
     }
 
