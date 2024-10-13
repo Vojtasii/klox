@@ -3,7 +3,6 @@ package cz.vojtasii.lox
 class Interpreter(
     private var environment: Environment = globals,
 ) : ExprVisitor<LoxValue>, StmtVisitor<Unit> {
-    private var breaking = false
 
     fun interpret(statements: List<Stmt>) {
         try {
@@ -29,7 +28,6 @@ class Interpreter(
 
             for (statement in statements) {
                 execute(statement)
-                if (breaking) break
             }
         } finally {
             this.environment = previous
@@ -61,13 +59,12 @@ class Interpreter(
                 environment.define(stmt.name.lexeme, value)
             }
             is While -> try {
-                while (!breaking && visit(stmt.condition).isTruthy) {
+                while (visit(stmt.condition).isTruthy) {
                     execute(stmt.body)
                 }
-            } finally {
-                breaking = false
+            } catch (_: BreakJump) {
             }
-            is Break -> breaking = true
+            is Break -> throw BreakJump()
             is Block -> executeBlock(stmt.statements, Environment(environment))
         }
     }
