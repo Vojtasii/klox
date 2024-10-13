@@ -5,8 +5,9 @@ import kotlin.system.exitProcess
 
 
 object Lox {
-
     private var hadError: Boolean = false
+    private var hadRuntimeError: Boolean = false
+    private val interpreter = Interpreter()
 
     @JvmStatic
     fun main(args: Array<String>) {
@@ -25,6 +26,7 @@ object Lox {
         run(source)
         // Indicate an error in the exit code.
         if (hadError) exitProcess(65)
+        if (hadRuntimeError) exitProcess(70);
     }
 
     private fun runPrompt() {
@@ -44,7 +46,7 @@ object Lox {
 
         if (hadError || expression == null) return
 
-        println(AstPrinter.visit(expression))
+        interpreter.interpret(expression)
     }
 
     fun error(line: Int, column: Int, message: String) {
@@ -57,6 +59,13 @@ object Lox {
         } else {
             report(token.line, token.column, " at '" + token.lexeme + "'", message)
         }
+    }
+
+    fun runtimeError(error: RuntimeError) {
+        with(error.token) {
+            System.err.println("${error.message}\n[$line:$column]")
+        }
+        hadRuntimeError = true
     }
 
     private fun report(line: Int, column: Int, where: String, message: String) {

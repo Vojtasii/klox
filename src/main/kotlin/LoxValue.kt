@@ -1,6 +1,13 @@
 package cz.vojtasii.lox
 
-sealed interface LoxValue
+sealed interface LoxValue {
+    val isTruthy: Boolean
+        get() = when (this) {
+            is LoxNil -> false
+            is LoxBoolean -> value
+            else -> true
+        }
+}
 
 data object LoxNil : LoxValue {
     override fun toString(): String = "nil"
@@ -13,7 +20,7 @@ value class LoxBoolean(val value: Boolean) : LoxValue {
 
 @JvmInline
 value class LoxNumber(val value: Double) : LoxValue {
-    override fun toString(): String = value.toString()
+    override fun toString(): String = value.toString().removeSuffix(".0")
 }
 
 @JvmInline
