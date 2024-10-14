@@ -51,6 +51,13 @@ class Interpreter : ExprVisitor<LoxValue>, StmtVisitor<Unit> {
 
     override fun visit(stmt: Stmt) {
         when (stmt) {
+            is Block -> executeBlock(stmt.statements, Environment(environment))
+            is Break -> throw BreakJump()
+            is Class -> {
+                environment.define(stmt.name.lexeme, LoxNil)
+                val klass = LoxClass(stmt.name.lexeme)
+                environment.assign(stmt.name, klass)
+            }
             is Expression -> visit(stmt.expression)
             is Function -> {
                 val function = LoxFunction(stmt, environment)
@@ -79,8 +86,6 @@ class Interpreter : ExprVisitor<LoxValue>, StmtVisitor<Unit> {
                 }
             } catch (_: BreakJump) {
             }
-            is Break -> throw BreakJump()
-            is Block -> executeBlock(stmt.statements, Environment(environment))
         }
     }
 

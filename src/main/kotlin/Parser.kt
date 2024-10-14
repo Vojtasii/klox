@@ -20,12 +20,14 @@ class Parser(
         }
 
     /**
-     * declaration → "fun" function
+     * declaration → "class" classDecl
+     *             | "fun" function
      *             | "var" varDecl
      *             | statement
      */
     private fun declaration(): Stmt? = try {
         when {
+            match(TokenType.CLASS) -> classDeclaration()
             match(TokenType.FUN) -> when (peek().type) {
                 TokenType.IDENTIFIER -> function(FunctionType.FUNCTION)
                 else -> {
@@ -41,6 +43,24 @@ class Parser(
     } catch (error: ParseError) {
         synchronize()
         null
+    }
+
+    /**
+     * classDecl → IDENTIFIER "{" function* "}"
+     */
+    private fun classDeclaration(): Stmt {
+        val name = consume(TokenType.IDENTIFIER, "Expect class name.")
+        consume(TokenType.LEFT_BRACE, "Expect '{' before class body.")
+
+        val methods = buildList {
+            while (!check(TokenType.RIGHT_BRACE) && !isAtEnd()) {
+                add(function(FunctionType.METHOD))
+            }
+        }
+
+        consume(TokenType.RIGHT_BRACE, "Expect '}' after class body.")
+
+        return Class(name, methods)
     }
 
     /**

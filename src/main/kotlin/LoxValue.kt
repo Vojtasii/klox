@@ -73,3 +73,19 @@ data class LoxFunction(
 abstract class LoxNativeFun(override val arity: Int) : LoxValue, LoxCallable {
     override fun toString(): String = "<native fun>"
 }
+
+data class LoxClass(val name: String) : LoxValue, LoxCallable {
+    override val arity: Int
+        get() = 0
+
+    override fun call(interpreter: Interpreter, arguments: List<LoxValue>): LoxValue {
+        val instance = LoxInstance(this)
+        return instance
+    }
+
+    override fun toString(): String = name
+}
+
+data class LoxInstance(val klass: LoxClass) : LoxValue {
+    override fun toString(): String = "${klass.name} instance"
+}

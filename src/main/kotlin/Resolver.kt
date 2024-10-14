@@ -21,6 +21,10 @@ class Resolver(
             is Break -> if (currentLoop == LoopType.NONE) {
                 Lox.error(stmt.keyword, "Can't break outside loop.")
             }
+            is Class -> {
+                declare(stmt.name)
+                define(stmt.name)
+            }
             is Expression -> visit(stmt.expression)
             is If -> {
                 visit(stmt.condition)
