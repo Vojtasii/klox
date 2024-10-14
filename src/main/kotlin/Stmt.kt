@@ -9,7 +9,7 @@ interface StmtVisitor<R> {
 data class Expression(val expression: Expr) : Stmt
 data class Function(val name: Token, val params: List<Token>, val body: List<Stmt>) : Stmt {
     enum class Kind {
-        FUNCTION;
+        NONE, FUNCTION;
 
         override fun toString(): String = name.lowercase()
     }

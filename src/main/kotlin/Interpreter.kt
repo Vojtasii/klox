@@ -1,8 +1,19 @@
 package cz.vojtasii.lox
 
-class Interpreter(
-    private var environment: Environment = globals,
-) : ExprVisitor<LoxValue>, StmtVisitor<Unit> {
+import java.util.IdentityHashMap
+
+class Interpreter : ExprVisitor<LoxValue>, StmtVisitor<Unit> {
+    private val globals: Environment = Environment().apply {
+        define(
+            "clock",
+            object : LoxNativeFun(0) {
+                override fun call(interpreter: Interpreter, arguments: List<LoxValue>): LoxNumber =
+                    LoxNumber(System.currentTimeMillis() / 1000.0)
+            },
+        )
+    }
+    private var environment: Environment = globals
+    private val locals: IdentityHashMap<Expr, Int> = IdentityHashMap()
 
     fun interpret(statements: List<Stmt>) {
         try {
@@ -16,6 +27,10 @@ class Interpreter(
 
     private fun execute(statement: Stmt) {
         visit(statement)
+    }
+
+    fun resolve(expr: Expr, depth: Int) {
+        locals[expr] = depth
     }
 
     fun executeBlock(
@@ -78,9 +93,14 @@ class Interpreter(
             is Binary -> evaluateBinaryExpr(expr)
             is AnonymousFunction -> LoxFunction(expr, environment)
             is Call -> evaluateCallExpr(expr)
-            is Variable -> environment[expr.name]
-            is Assign -> visit(expr.value).also {
-                environment.assign(expr.name, it)
+            is Variable -> lookUpVariable(expr.name, expr)
+            is Assign -> visit(expr.value).also { value ->
+                val distance = locals[expr]
+                if (distance != null) {
+                    environment.assignAt(distance, expr.name, value)
+                } else {
+                    globals.assign(expr.name, value)
+                }
             }
             is TernaryConditional -> evaluateTernaryCondExpr(expr)
         }
@@ -159,6 +179,15 @@ class Interpreter(
         return callable.call(this, arguments)
     }
 
+    private fun lookUpVariable(name: Token, expr: Expr): LoxValue {
+        val distance = locals[expr]
+        return if (distance != null) {
+            environment.getAt(distance, name.lexeme)
+        } else {
+            globals[name]
+        }
+    }
+
     private fun evaluateTernaryCondExpr(expr: TernaryConditional): LoxValue {
         val condition = visit(expr.condition)
 
@@ -186,17 +215,5 @@ class Interpreter(
     ): LoxValue = when {
         left is LoxNumber && right is LoxNumber -> block(left, right)
         else -> throw RuntimeError(operator, "Operands must be numbers.")
-    }
-
-    companion object {
-        val globals: Environment = Environment().apply {
-            define(
-                "clock",
-                object : LoxNativeFun(0) {
-                    override fun call(interpreter: Interpreter, arguments: List<LoxValue>): LoxNumber =
-                        LoxNumber(System.currentTimeMillis() / 1000.0)
-                },
-            )
-        }
     }
 }

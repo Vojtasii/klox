@@ -3,7 +3,6 @@ package cz.vojtasii.lox
 import java.io.File
 import kotlin.system.exitProcess
 
-
 object Lox {
     const val MAX_ARGUMENTS = 255
 
@@ -46,6 +45,13 @@ object Lox {
         val parser = Parser(tokens, mode)
         val statements = parser.parse()
 
+        // Stop if there was a syntax error.
+        if (hadError) return
+
+        val resolver = Resolver(interpreter)
+        resolver.visit(statements)
+
+        // Stop if there was a resolution error.
         if (hadError) return
 
         interpreter.interpret(statements)
