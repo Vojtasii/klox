@@ -3,7 +3,7 @@ package cz.vojtasii.lox
 class Resolver(
     private val interpreter: Interpreter,
 ) : ExprVisitor<Unit>, StmtVisitor<Unit> {
-    private val scopes = ArrayDeque<MutableMap<String, Boolean>>()
+    private val scopes = ArrayDeque<MutableMap<String, VarDef>>()
     private var currentFunction = FunctionType.NONE
     private var currentLoop = LoopType.NONE
 
@@ -86,7 +86,7 @@ class Resolver(
             }
             is Unary -> visit(expr.right)
             is Variable -> {
-                if (scopes.lastOrNull()?.get(expr.name.lexeme) == false) {
+                if (scopes.lastOrNull()?.get(expr.name.lexeme)?.state == VarState.DECLARED) {
                     Lox.error(expr.name, "Can't read local variable in its own initializer.")
                 }
 
@@ -100,7 +100,10 @@ class Resolver(
     }
 
     private fun endScope() {
-        scopes.removeLast()
+        val scope = scopes.removeLast()
+        scope.filter { it.value.state != VarState.USED }.forEach { (_, unusedVariable) ->
+            Lox.error(unusedVariable.name, "Unused local variable.")
+        }
     }
 
     private fun declare(name: Token) {
@@ -109,11 +112,12 @@ class Resolver(
             Lox.error(name, "Already a variable with this name in this scope.")
         }
 
-        scope[name.lexeme] = false
+        scope[name.lexeme] = VarDef(name, VarState.DECLARED)
     }
 
     private fun define(name: Token) {
-        scopes.lastOrNull()?.put(name.lexeme, true)
+        val scope = scopes.lastOrNull() ?: return
+        scope[name.lexeme] = VarDef(name, VarState.DEFINED)
     }
 
     private fun resolveFunction(params: List<Token>, body: List<Stmt>, type: FunctionType) {
@@ -131,10 +135,20 @@ class Resolver(
     }
 
     private fun resolveLocal(expr: Expr, name: Token) {
-        val index = scopes.withIndex().lastOrNull { (_, scope) ->
+        val (index, scope) = scopes.withIndex().lastOrNull { (_, scope) ->
             scope.containsKey(name.lexeme)
-        }?.index ?: return
+        } ?: return
+
+        scope.computeIfPresent(name.lexeme) { _, variable ->
+            variable.copy(state = VarState.USED)
+        }
 
         interpreter.resolve(expr, scopes.size - 1 - index)
+    }
+
+    private data class VarDef(val name: Token, val state: VarState)
+
+    private enum class VarState {
+        DECLARED, DEFINED, USED;
     }
 }
