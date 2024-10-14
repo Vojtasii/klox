@@ -5,7 +5,6 @@ class Parser(
     private val mode: Mode = Mode.STANDARD,
 ) {
     private var current = 0
-    private var loopDepth = 0
 
     /**
      * program → statement* EOF
@@ -28,7 +27,7 @@ class Parser(
     private fun declaration(): Stmt? = try {
         when {
             match(TokenType.FUN) -> when (peek().type) {
-                TokenType.IDENTIFIER -> function(Function.Kind.FUNCTION)
+                TokenType.IDENTIFIER -> function(FunctionType.FUNCTION)
                 else -> {
                     // Special-case handling for a potential anonymous function in expression statement.
                     // Unparse 'fun'.
@@ -61,22 +60,18 @@ class Parser(
      * whileStmt → "while" "(" expression ")" statement
      */
     private fun whileStatement(): Stmt {
-        loopDepth++
         consume(TokenType.LEFT_PAREN, "Expect '(' after 'while'.")
         val condition = expression()
         consume(TokenType.RIGHT_PAREN, "Expect ')' after condition.")
         val body = statement()
 
-        return While(condition, body).also {
-            loopDepth--
-        }
+        return While(condition, body)
     }
 
     /**
      * forStmt → "for" "(" ( "var" varDecl | exprStmt | ";" ) expression? ";" expression? ")" statement
      */
     private fun forStatement(): Stmt {
-        loopDepth++
         consume(TokenType.LEFT_PAREN, "Expect '(' after 'for'.")
 
         val initializer = when {
@@ -109,9 +104,7 @@ class Parser(
             body = Block(listOf(initializer, body))
         }
 
-        return body.also {
-            loopDepth--
-        }
+        return body
     }
 
     /**
@@ -192,13 +185,13 @@ class Parser(
     /**
      * function → IDENTIFIER "(" parameters? ")" block
      */
-    private fun function(kind: Function.Kind): Function {
-        val name = consume(TokenType.IDENTIFIER, "Expect $kind name.")
-        consume(TokenType.LEFT_PAREN, "Expect '(' after $kind name.")
+    private fun function(type: FunctionType): Function {
+        val name = consume(TokenType.IDENTIFIER, "Expect $type name.")
+        consume(TokenType.LEFT_PAREN, "Expect '(' after $type name.")
         val parameters = parameters()
         consume(TokenType.RIGHT_PAREN, "Expect ')' after parameters.")
 
-        consume(TokenType.LEFT_BRACE, "Expect '{' before $kind body.")
+        consume(TokenType.LEFT_BRACE, "Expect '{' before $type body.")
         val body = block()
         return Function(name, parameters, body)
     }
@@ -221,12 +214,9 @@ class Parser(
     }
 
     private fun breakStatement(): Stmt {
-        val breakToken = previous()
-        if (loopDepth <= 0) {
-            error(breakToken, "Statement 'break' is allowed only inside a loop.")
-        }
+        val keyword = previous()
         consume(TokenType.SEMICOLON, "Expect ';' after 'break'.")
-        return Break
+        return Break(keyword)
     }
 
     /**

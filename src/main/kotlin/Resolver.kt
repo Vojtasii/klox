@@ -4,7 +4,8 @@ class Resolver(
     private val interpreter: Interpreter,
 ) : ExprVisitor<Unit>, StmtVisitor<Unit> {
     private val scopes = ArrayDeque<MutableMap<String, Boolean>>()
-    private var currentFunction = Function.Kind.NONE
+    private var currentFunction = FunctionType.NONE
+    private var currentLoop = LoopType.NONE
 
     fun visit(statements: List<Stmt>) {
         statements.forEach(this::visit)
@@ -17,7 +18,9 @@ class Resolver(
                 visit(stmt.statements)
                 endScope()
             }
-            Break -> Unit
+            is Break -> if (currentLoop == LoopType.NONE) {
+                Lox.error(stmt.keyword, "Can't break outside loop.")
+            }
             is Expression -> visit(stmt.expression)
             is If -> {
                 visit(stmt.condition)
@@ -26,7 +29,7 @@ class Resolver(
             }
             is Print -> visit(stmt.expression)
             is Return -> {
-                if (currentFunction == Function.Kind.NONE) {
+                if (currentFunction == FunctionType.NONE) {
                     Lox.error(stmt.keyword, "Can't return from top-level code.")
                 }
 
@@ -36,7 +39,7 @@ class Resolver(
                 declare(stmt.name)
                 define(stmt.name)
 
-                resolveFunction(stmt.params, stmt.body, Function.Kind.FUNCTION)
+                resolveFunction(stmt.params, stmt.body, FunctionType.FUNCTION)
             }
             is Var -> {
                 declare(stmt.name)
@@ -47,14 +50,17 @@ class Resolver(
             }
             is While -> {
                 visit(stmt.condition)
+                val enclosingLoop = currentLoop
+                currentLoop = LoopType.WHILE
                 visit(stmt.body)
+                currentLoop = enclosingLoop
             }
         }
     }
 
     override fun visit(expr: Expr) {
         when (expr) {
-            is AnonymousFunction -> resolveFunction(expr.params, expr.body, Function.Kind.FUNCTION)
+            is AnonymousFunction -> resolveFunction(expr.params, expr.body, FunctionType.FUNCTION)
             is Assign -> {
                 visit(expr.value)
                 resolveLocal(expr, expr.name)
@@ -110,9 +116,9 @@ class Resolver(
         scopes.lastOrNull()?.put(name.lexeme, true)
     }
 
-    private fun resolveFunction(params: List<Token>, body: List<Stmt>, kind: Function.Kind) {
+    private fun resolveFunction(params: List<Token>, body: List<Stmt>, type: FunctionType) {
         val enclosingFunction = currentFunction
-        currentFunction = kind
+        currentFunction = type
 
         beginScope()
         for (param in params) {
