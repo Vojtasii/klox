@@ -46,7 +46,7 @@ class Parser(
     }
 
     /**
-     * classDecl → IDENTIFIER "{" function* "}"
+     * classDecl → IDENTIFIER "{" ( "class" function | function | getter )* "}"
      */
     private fun classDeclaration(): Stmt {
         val name = consume(TokenType.IDENTIFIER, "Expect class name.")
@@ -54,16 +54,27 @@ class Parser(
 
         val staticMethods = mutableListOf<Function>()
         val methods = mutableListOf<Function>()
+        val getters = mutableListOf<Getter>()
         while (!check(TokenType.RIGHT_BRACE) && !isAtEnd()) {
             when {
                 match(TokenType.CLASS) -> staticMethods.add(function(FunctionType.METHOD))
-                else -> methods.add(function(FunctionType.METHOD))
+                match(TokenType.IDENTIFIER) -> {
+                    val memberName = previous()
+                    when {
+                        match(TokenType.LEFT_BRACE) -> getters.add(Getter(memberName, block()))
+                        else -> {
+                            recede()
+                            methods.add(function(FunctionType.METHOD))
+                        }
+                    }
+                }
+                else -> throw error(peek(), "Expect method or getter name.")
             }
         }
 
         consume(TokenType.RIGHT_BRACE, "Expect '}' after class body.")
 
-        return Class(name, methods, staticMethods)
+        return Class(name, methods, getters, staticMethods)
     }
 
     /**

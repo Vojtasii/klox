@@ -60,12 +60,16 @@ class Interpreter : ExprVisitor<LoxValue>, StmtVisitor<Unit> {
                     val function = LoxFunction(method, environment, method.name.lexeme == "init")
                     method.name.lexeme to function
                 }
+                val getters = stmt.getters.associate { getter ->
+                    val loxGetter = LoxGetter(getter.name.lexeme, getter.body, environment)
+                    getter.name.lexeme to loxGetter
+                }
                 val staticMethods = stmt.staticMethods.associate { staticMethod ->
                     val function = LoxFunction(staticMethod, environment)
                     staticMethod.name.lexeme to function
                 }
 
-                val klass = LoxClass(stmt.name.lexeme, methods, staticMethods)
+                val klass = LoxClass(stmt.name.lexeme, methods, getters, staticMethods)
                 environment.assign(stmt.name, klass)
             }
             is Expression -> visit(stmt.expression)
@@ -73,6 +77,7 @@ class Interpreter : ExprVisitor<LoxValue>, StmtVisitor<Unit> {
                 val function = LoxFunction(stmt, environment)
                 environment.define(stmt.name.lexeme, function)
             }
+            is Getter -> error("Getter should never appear outside of class context.")
             is If -> if (visit(stmt.condition).isTruthy) {
                 execute(stmt.thenBranch)
             } else if (stmt.elseBranch != null) {
@@ -199,7 +204,10 @@ class Interpreter : ExprVisitor<LoxValue>, StmtVisitor<Unit> {
 
     private fun evaluateGetExpr(expr: Get): LoxValue {
         return when (val obj = visit(expr.obj)) {
-            is LoxInstance -> obj[expr.name]
+            is LoxInstance -> obj[expr.name].let {
+                // getters are evaluated immediately without a Call expression
+                if (it is LoxGetter) it.evaluate(this) else it
+            }
             else -> throw RuntimeError(expr.name, "Only instances have properties.")
         }
     }

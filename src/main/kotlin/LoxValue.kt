@@ -83,6 +83,28 @@ abstract class LoxNativeFun(override val arity: Int) : LoxValue, LoxCallable {
     override fun toString(): String = "<native fun>"
 }
 
+data class LoxGetter(val name: String, val body: List<Stmt>, val closure: Environment) : LoxValue {
+
+    fun bind(instance: LoxInstance): LoxGetter {
+        val environment = Environment(closure)
+        environment.define("this", instance)
+        return LoxGetter(name, body, environment)
+    }
+
+    fun evaluate(interpreter: Interpreter): LoxValue {
+        val environment = Environment(closure)
+
+        return try {
+            interpreter.executeBlock(body, environment)
+            LoxNil
+        } catch (returnJump: ReturnJump) {
+            returnJump.value
+        }
+    }
+
+    override fun toString(): String = "<get $name>"
+}
+
 sealed interface LoxInstance : LoxValue {
     operator fun get(name: Token): LoxValue
     operator fun set(name: Token, value: LoxValue): LoxValue
@@ -91,6 +113,7 @@ sealed interface LoxInstance : LoxValue {
 data class LoxClass(
     val name: String,
     val methods: Map<String, LoxFunction>,
+    val getters: Map<String, LoxGetter>,
     val staticMethods: Map<String, LoxFunction>,
 ) : LoxValue, LoxCallable, LoxInstance {
     private val staticFields = mutableMapOf<String, LoxValue>()
@@ -106,6 +129,7 @@ data class LoxClass(
         return instance
     }
 
+    fun findGetter(name: String): LoxGetter? = getters[name]
     fun findMethod(name: String): LoxFunction? = methods[name]
 
     override fun get(name: Token): LoxValue =
@@ -126,6 +150,7 @@ data class LoxClassInstance(val klass: LoxClass) : LoxValue, LoxInstance {
 
     override operator fun get(name: Token): LoxValue =
         fields[name.lexeme]
+            ?: klass.findGetter(name.lexeme)?.bind(this)
             ?: klass.findMethod(name.lexeme)?.bind(this)
             ?: throw RuntimeError(name, "Undefined property '${name.lexeme}'.")
 

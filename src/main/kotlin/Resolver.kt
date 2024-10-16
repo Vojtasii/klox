@@ -36,6 +36,10 @@ class Resolver(
                     resolveFunction(staticMethod.params, staticMethod.body, FunctionType.METHOD)
                 }
 
+                for (getter in stmt.getters) {
+                    resolveFunction(emptyList(), getter.body, FunctionType.GETTER)
+                }
+
                 for (method in stmt.methods) {
                     val declaration = when (method.name.lexeme) {
                         "init" -> FunctionType.INITIALIZER
@@ -75,6 +79,7 @@ class Resolver(
 
                 resolveFunction(stmt.params, stmt.body, FunctionType.FUNCTION)
             }
+            is Getter -> error("Getter should never appear outside of class context.")
             is Var -> {
                 declare(stmt.name)
                 if (stmt.initializer != null) {
