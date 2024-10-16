@@ -33,7 +33,12 @@ class Resolver(
                 scopes.last()["this"] = VarDef(stmt.name, VarState.USED)
 
                 for (method in stmt.methods) {
-                    resolveFunction(method.params, method.body, FunctionType.METHOD)
+                    val declaration = when (method.name.lexeme) {
+                        "init" -> FunctionType.INITIALIZER
+                        else -> FunctionType.METHOD
+                    }
+
+                    resolveFunction(method.params, method.body, declaration)
                 }
 
                 endScope()
@@ -52,7 +57,13 @@ class Resolver(
                     Lox.error(stmt.keyword, "Can't return from top-level code.")
                 }
 
-                if (stmt.value != null) visit(stmt.value)
+                if (stmt.value != null) {
+                    if (currentFunction == FunctionType.INITIALIZER) {
+                        Lox.error(stmt.keyword, "Can't return a value from an initializer.")
+                    }
+
+                    visit(stmt.value)
+                }
             }
             is Function -> {
                 declare(stmt.name)

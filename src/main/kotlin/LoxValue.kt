@@ -38,14 +38,15 @@ data class LoxFunction(
     val params: List<Token>,
     val body: List<Stmt>,
     val closure: Environment,
+    val isInitializer: Boolean,
 ) : LoxValue, LoxCallable {
 
-    constructor(declaration: Function, closure: Environment) : this(
-        declaration.name.lexeme, declaration.params, declaration.body, closure
+    constructor(declaration: Function, closure: Environment, isInitializer: Boolean = false) : this(
+        declaration.name.lexeme, declaration.params, declaration.body, closure, isInitializer
     )
 
     constructor(declaration: AnonymousFunction, closure: Environment) : this(
-        "(anonymous)", declaration.params, declaration.body, closure
+        "(anonymous)", declaration.params, declaration.body, closure, false
     )
 
     override val arity: Int = params.size
@@ -53,7 +54,7 @@ data class LoxFunction(
     fun bind(instance: LoxInstance): LoxFunction {
         val environment = Environment(closure)
         environment.define("this", instance)
-        return LoxFunction(name, params, body, environment)
+        return LoxFunction(name, params, body, environment, isInitializer)
     }
 
     override fun call(interpreter: Interpreter, arguments: List<LoxValue>): LoxValue {
@@ -65,12 +66,14 @@ data class LoxFunction(
             environment.define(param.lexeme, arg)
         }
 
-        return try {
+        val returnValue = try {
             interpreter.executeBlock(body, environment)
             LoxNil
         } catch (returnJump: ReturnJump) {
             returnJump.value
         }
+
+        return if (isInitializer) closure.getAt(0, "this") else returnValue
     }
 
     override fun toString(): String = "<fun $name>"
@@ -85,10 +88,13 @@ data class LoxClass(
     val methods: Map<String, LoxFunction>,
 ) : LoxValue, LoxCallable {
     override val arity: Int
-        get() = 0
+        get() = this["init"]?.arity ?: 0
 
     override fun call(interpreter: Interpreter, arguments: List<LoxValue>): LoxValue {
         val instance = LoxInstance(this)
+        val initializer = this["init"]
+        initializer?.bind(instance)?.call(interpreter, arguments)
+
         return instance
     }
 

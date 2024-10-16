@@ -57,7 +57,7 @@ class Interpreter : ExprVisitor<LoxValue>, StmtVisitor<Unit> {
                 environment.define(stmt.name.lexeme, LoxNil)
 
                 val methods = stmt.methods.associate { method ->
-                    val function = LoxFunction(method, environment)
+                    val function = LoxFunction(method, environment, method.name.lexeme == "init")
                     method.name.lexeme to function
                 }
 

@@ -18,7 +18,7 @@ data class Var(val name: Token, val initializer: Expr?) : Stmt
 data class While(val condition: Expr, val body: Stmt) : Stmt
 
 enum class FunctionType {
-    NONE, FUNCTION, METHOD;
+    NONE, FUNCTION, INITIALIZER, METHOD;
 
     override fun toString(): String = name.lowercase()
 }
