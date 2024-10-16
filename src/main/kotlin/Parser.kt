@@ -52,15 +52,18 @@ class Parser(
         val name = consume(TokenType.IDENTIFIER, "Expect class name.")
         consume(TokenType.LEFT_BRACE, "Expect '{' before class body.")
 
-        val methods = buildList {
-            while (!check(TokenType.RIGHT_BRACE) && !isAtEnd()) {
-                add(function(FunctionType.METHOD))
+        val staticMethods = mutableListOf<Function>()
+        val methods = mutableListOf<Function>()
+        while (!check(TokenType.RIGHT_BRACE) && !isAtEnd()) {
+            when {
+                match(TokenType.CLASS) -> staticMethods.add(function(FunctionType.METHOD))
+                else -> methods.add(function(FunctionType.METHOD))
             }
         }
 
         consume(TokenType.RIGHT_BRACE, "Expect '}' after class body.")
 
-        return Class(name, methods)
+        return Class(name, methods, staticMethods)
     }
 
     /**

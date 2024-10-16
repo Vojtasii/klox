@@ -8,7 +8,7 @@ interface StmtVisitor<R> {
 
 data class Block(val statements: List<Stmt>) : Stmt
 data class Break(val keyword: Token) : Stmt
-data class Class(val name: Token, val methods: List<Function>): Stmt
+data class Class(val name: Token, val methods: List<Function>, val staticMethods: List<Function>): Stmt
 data class Expression(val expression: Expr) : Stmt
 data class Function(val name: Token, val params: List<Token>, val body: List<Stmt>) : Stmt
 data class If(val condition: Expr, val thenBranch: Stmt, val elseBranch: Stmt?) : Stmt
@@ -20,7 +20,7 @@ data class While(val condition: Expr, val body: Stmt) : Stmt
 enum class FunctionType {
     NONE, FUNCTION, INITIALIZER, METHOD;
 
-    override fun toString(): String = name.lowercase()
+    override fun toString(): String = name.lowercase().replace('_',' ')
 }
 
 enum class ClassType {

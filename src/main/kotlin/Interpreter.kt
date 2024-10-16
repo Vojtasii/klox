@@ -60,8 +60,12 @@ class Interpreter : ExprVisitor<LoxValue>, StmtVisitor<Unit> {
                     val function = LoxFunction(method, environment, method.name.lexeme == "init")
                     method.name.lexeme to function
                 }
+                val staticMethods = stmt.staticMethods.associate { staticMethod ->
+                    val function = LoxFunction(staticMethod, environment)
+                    staticMethod.name.lexeme to function
+                }
 
-                val klass = LoxClass(stmt.name.lexeme, methods)
+                val klass = LoxClass(stmt.name.lexeme, methods, staticMethods)
                 environment.assign(stmt.name, klass)
             }
             is Expression -> visit(stmt.expression)

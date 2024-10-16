@@ -83,35 +83,53 @@ abstract class LoxNativeFun(override val arity: Int) : LoxValue, LoxCallable {
     override fun toString(): String = "<native fun>"
 }
 
+sealed interface LoxInstance : LoxValue {
+    operator fun get(name: Token): LoxValue
+    operator fun set(name: Token, value: LoxValue): LoxValue
+}
+
 data class LoxClass(
     val name: String,
     val methods: Map<String, LoxFunction>,
-) : LoxValue, LoxCallable {
-    override val arity: Int
-        get() = this["init"]?.arity ?: 0
+    val staticMethods: Map<String, LoxFunction>,
+) : LoxValue, LoxCallable, LoxInstance {
+    private val staticFields = mutableMapOf<String, LoxValue>()
 
-    override fun call(interpreter: Interpreter, arguments: List<LoxValue>): LoxValue {
-        val instance = LoxInstance(this)
-        val initializer = this["init"]
+    override val arity: Int
+        get() = findMethod("init")?.arity ?: 0
+
+    override fun call(interpreter: Interpreter, arguments: List<LoxValue>): LoxClassInstance {
+        val instance = LoxClassInstance(this)
+        val initializer = findMethod("init")
         initializer?.bind(instance)?.call(interpreter, arguments)
 
         return instance
     }
 
-    operator fun get(name: String): LoxFunction? = methods[name]
+    fun findMethod(name: String): LoxFunction? = methods[name]
+
+    override fun get(name: Token): LoxValue =
+        staticFields[name.lexeme]
+            ?: staticMethods[name.lexeme]?.bind(this)
+            ?: throw RuntimeError(name, "Undefined property '${name.lexeme}'.")
+
+    override fun set(name: Token, value: LoxValue): LoxValue {
+        staticFields[name.lexeme] = value
+        return value
+    }
 
     override fun toString(): String = name
 }
 
-data class LoxInstance(val klass: LoxClass) : LoxValue {
+data class LoxClassInstance(val klass: LoxClass) : LoxValue, LoxInstance {
     private val fields = mutableMapOf<String, LoxValue>()
 
-    operator fun get(name: Token): LoxValue =
+    override operator fun get(name: Token): LoxValue =
         fields[name.lexeme]
-            ?: klass[name.lexeme]?.bind(this)
+            ?: klass.findMethod(name.lexeme)?.bind(this)
             ?: throw RuntimeError(name, "Undefined property '${name.lexeme}'.")
 
-    operator fun set(name: Token, value: LoxValue): LoxValue {
+    override operator fun set(name: Token, value: LoxValue): LoxValue {
         fields[name.lexeme] = value
         return value
     }

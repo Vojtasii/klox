@@ -32,6 +32,10 @@ class Resolver(
                 beginScope()
                 scopes.last()["this"] = VarDef(stmt.name, VarState.USED)
 
+                for (staticMethod in stmt.staticMethods) {
+                    resolveFunction(staticMethod.params, staticMethod.body, FunctionType.METHOD)
+                }
+
                 for (method in stmt.methods) {
                     val declaration = when (method.name.lexeme) {
                         "init" -> FunctionType.INITIALIZER

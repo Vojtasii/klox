@@ -1,0 +1,16 @@
+class Math {
+  init(prop) {
+    this.prop = prop;
+  }
+
+  class square(n) {
+    return n * n;
+  }
+}
+
+var m = Math("Instance property");
+Math.prop = "Static property";
+
+print Math.square(3); // Prints "9".
+print Math.prop; // Prints "Static property".
+print m.prop; // Prints "Instance property".
