@@ -23,6 +23,10 @@ enum class FunctionType {
     override fun toString(): String = name.lowercase()
 }
 
+enum class ClassType {
+    NONE, CLASS;
+}
+
 enum class LoopType {
     NONE, WHILE;
 }

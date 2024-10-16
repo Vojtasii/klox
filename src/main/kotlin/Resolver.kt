@@ -5,6 +5,7 @@ class Resolver(
 ) : ExprVisitor<Unit>, StmtVisitor<Unit> {
     private val scopes = ArrayDeque<MutableMap<String, VarDef>>()
     private var currentFunction = FunctionType.NONE
+    private var currentClass = ClassType.NONE
     private var currentLoop = LoopType.NONE
 
     fun visit(statements: List<Stmt>) {
@@ -22,8 +23,22 @@ class Resolver(
                 Lox.error(stmt.keyword, "Can't break outside loop.")
             }
             is Class -> {
+                val enclosingClass = currentClass
+                currentClass = ClassType.CLASS
+
                 declare(stmt.name)
                 define(stmt.name)
+
+                beginScope()
+                scopes.last()["this"] = VarDef(stmt.name, VarState.USED)
+
+                for (method in stmt.methods) {
+                    resolveFunction(method.params, method.body, FunctionType.METHOD)
+                }
+
+                endScope()
+
+                currentClass = enclosingClass
             }
             is Expression -> visit(stmt.expression)
             is If -> {
@@ -77,11 +92,23 @@ class Resolver(
                 visit(expr.callee)
                 expr.arguments.forEach(::visit)
             }
+            is Get -> visit(expr.obj)
             is Grouping -> visit(expr.expression)
             is Literal -> Unit
             is Logical -> {
                 visit(expr.left)
                 visit(expr.right)
+            }
+            is Set -> {
+                visit(expr.value)
+                visit(expr.obj)
+            }
+            is This -> {
+                if (currentClass == ClassType.NONE) {
+                    Lox.error(expr.keyword, "Can't use 'this' outside of a class.")
+                }
+
+                resolveLocal(expr, expr.keyword)
             }
             is TernaryConditional -> {
                 visit(expr.condition)

@@ -55,7 +55,13 @@ class Interpreter : ExprVisitor<LoxValue>, StmtVisitor<Unit> {
             is Break -> throw BreakJump()
             is Class -> {
                 environment.define(stmt.name.lexeme, LoxNil)
-                val klass = LoxClass(stmt.name.lexeme)
+
+                val methods = stmt.methods.associate { method ->
+                    val function = LoxFunction(method, environment)
+                    method.name.lexeme to function
+                }
+
+                val klass = LoxClass(stmt.name.lexeme, methods)
                 environment.assign(stmt.name, klass)
             }
             is Expression -> visit(stmt.expression)
@@ -91,13 +97,17 @@ class Interpreter : ExprVisitor<LoxValue>, StmtVisitor<Unit> {
 
     override fun visit(expr: Expr): LoxValue =
         when (expr) {
+            is AnonymousFunction -> LoxFunction(expr, environment)
+            is Binary -> evaluateBinaryExpr(expr)
+            is Call -> evaluateCallExpr(expr)
+            is Get -> evaluateGetExpr(expr)
+            is Grouping -> visit(expr.expression)
             is Literal -> expr.value
             is Logical -> evaluateLogicalExpr(expr)
-            is Grouping -> visit(expr.expression)
+            is Set -> evaluateSetExpr(expr)
+            is This -> lookUpVariable(expr.keyword, expr)
+            is TernaryConditional -> evaluateTernaryCondExpr(expr)
             is Unary -> evaluateUnaryExpr(expr)
-            is Binary -> evaluateBinaryExpr(expr)
-            is AnonymousFunction -> LoxFunction(expr, environment)
-            is Call -> evaluateCallExpr(expr)
             is Variable -> lookUpVariable(expr.name, expr)
             is Assign -> visit(expr.value).also { value ->
                 val distance = locals[expr]
@@ -107,7 +117,6 @@ class Interpreter : ExprVisitor<LoxValue>, StmtVisitor<Unit> {
                     globals.assign(expr.name, value)
                 }
             }
-            is TernaryConditional -> evaluateTernaryCondExpr(expr)
         }
 
     private fun evaluateLogicalExpr(expr: Logical): LoxValue {
@@ -182,6 +191,23 @@ class Interpreter : ExprVisitor<LoxValue>, StmtVisitor<Unit> {
             throw RuntimeError(expr.paren, "Expected ${callable.arity} arguments, but got ${arguments.size}.")
         }
         return callable.call(this, arguments)
+    }
+
+    private fun evaluateGetExpr(expr: Get): LoxValue {
+        return when (val obj = visit(expr.obj)) {
+            is LoxInstance -> obj[expr.name]
+            else -> throw RuntimeError(expr.name, "Only instances have properties.")
+        }
+    }
+
+    private fun evaluateSetExpr(expr: Set): LoxValue {
+        return when (val obj = visit(expr.obj)) {
+            is LoxInstance -> {
+                val value = visit(expr.value)
+                obj.set(expr.name, value)
+            }
+            else -> throw RuntimeError(expr.name, "Only instances have fields.")
+        }
     }
 
     private fun lookUpVariable(name: Token, expr: Expr): LoxValue {

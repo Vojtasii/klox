@@ -50,6 +50,12 @@ data class LoxFunction(
 
     override val arity: Int = params.size
 
+    fun bind(instance: LoxInstance): LoxFunction {
+        val environment = Environment(closure)
+        environment.define("this", instance)
+        return LoxFunction(name, params, body, environment)
+    }
+
     override fun call(interpreter: Interpreter, arguments: List<LoxValue>): LoxValue {
         val environment = Environment(closure)
         require(params.size == arguments.size) {
@@ -74,7 +80,10 @@ abstract class LoxNativeFun(override val arity: Int) : LoxValue, LoxCallable {
     override fun toString(): String = "<native fun>"
 }
 
-data class LoxClass(val name: String) : LoxValue, LoxCallable {
+data class LoxClass(
+    val name: String,
+    val methods: Map<String, LoxFunction>,
+) : LoxValue, LoxCallable {
     override val arity: Int
         get() = 0
 
@@ -83,9 +92,23 @@ data class LoxClass(val name: String) : LoxValue, LoxCallable {
         return instance
     }
 
+    operator fun get(name: String): LoxFunction? = methods[name]
+
     override fun toString(): String = name
 }
 
 data class LoxInstance(val klass: LoxClass) : LoxValue {
+    private val fields = mutableMapOf<String, LoxValue>()
+
+    operator fun get(name: Token): LoxValue =
+        fields[name.lexeme]
+            ?: klass[name.lexeme]?.bind(this)
+            ?: throw RuntimeError(name, "Undefined property '${name.lexeme}'.")
+
+    operator fun set(name: Token, value: LoxValue): LoxValue {
+        fields[name.lexeme] = value
+        return value
+    }
+
     override fun toString(): String = "${klass.name} instance"
 }

@@ -287,25 +287,27 @@ class Parser(
     }
 
     /**
-     * assignment → IDENTIFIER "=" assignment
+     * assignment → ( call "." )? IDENTIFIER "=" assignment
      *            | logic_or
      */
     private fun assignment(): Expr {
         val expr = or()
 
-        if (match(TokenType.EQUAL)) {
+        return if (match(TokenType.EQUAL)) {
             val equals = previous()
             val value = assignment()
 
-            if (expr is Variable) {
-                val name = expr.name
-                return Assign(name, value)
-            } else {
-                error(equals, "Invalid assignment target.")
+            when (expr) {
+                is Variable -> Assign(expr.name, value)
+                is Get -> Set(expr.obj, expr.name, value)
+                else -> {
+                    error(equals, "Invalid assignment target.")
+                    expr
+                }
             }
+        } else {
+            expr
         }
-
-        return expr
     }
 
     /**
@@ -413,16 +415,19 @@ class Parser(
     }
 
     /**
-     * call → primary ( "(" arguments? ")" )*
+     * call → primary ( "(" arguments? ")" | "." IDENTIFIER )*
      */
     private fun call(): Expr {
         var expr = primary()
 
         while (true) {
-            if (match(TokenType.LEFT_PAREN)) {
-                expr = finishCall(expr)
-            } else {
-                break
+            when {
+                match(TokenType.LEFT_PAREN) -> expr = finishCall(expr)
+                match(TokenType.DOT) -> {
+                    val name = consume(TokenType.IDENTIFIER, "Expect property name after '.'.")
+                    expr = Get(expr, name)
+                }
+                else -> break
             }
         }
 
@@ -483,6 +488,7 @@ class Parser(
                 val body = block()
                 AnonymousFunction(parameters, body)
             }
+            match(TokenType.THIS) -> This(previous())
             match(TokenType.IDENTIFIER) -> Variable(previous())
             else -> throw error(peek(), "Expect expression.")
         }

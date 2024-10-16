@@ -16,6 +16,9 @@ object AstPrinter : ExprVisitor<String> {
         is Variable -> expr.name.lexeme
         is Assign -> parenthesize("let ${expr.name.lexeme}", expr.value)
         is TernaryConditional -> parenthesize("cond", expr.condition, expr.truly, expr.falsy)
+        is Get -> parenthesize("get .${expr.name.lexeme}", expr.obj)
+        is Set -> parenthesize("set .${expr.name.lexeme}", expr.obj, expr.value)
+        is This -> expr.keyword.lexeme
     }
 
     private fun parenthesize(name: String, vararg exprs: Expr) = buildString {
