@@ -1,0 +1,13 @@
+class Doughnut {
+  msg {
+    return "Fry until golden brown.";
+  }
+}
+
+class BostonCream < Doughnut {
+  msg {
+    return super.msg + " Pipe full of custard and coat with chocolate.";
+  }
+}
+
+print BostonCream().msg;

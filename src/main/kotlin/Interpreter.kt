@@ -135,9 +135,12 @@ class Interpreter : ExprVisitor<LoxValue>, StmtVisitor<Unit> {
                 val superclass = environment.getAt(distance, "super") as LoxClass
                 // 'super' is always stored in the enclosing environment where 'this' is stored
                 val obj = environment.getAt(distance - 1, "this") as LoxInstance
-                val method = superclass.findMethod(expr.method.lexeme)
-                method?.bind(obj)
-                    ?: throw RuntimeError(expr.method, "Undefined property '${expr.method.lexeme}'.")
+                val bindable: LoxBindable? = with(superclass) {
+                    findGetter(expr.method.lexeme) ?: findMethod(expr.method.lexeme)
+                }
+                bindable?.bind(obj)?.let {
+                    if (it is LoxGetter) it.evaluate(this) else it
+                } ?: throw RuntimeError(expr.method, "Undefined property '${expr.method.lexeme}'.")
             }
             is This -> lookUpVariable(expr.keyword, expr)
             is TernaryConditional -> evaluateTernaryCondExpr(expr)

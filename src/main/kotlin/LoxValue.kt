@@ -33,13 +33,17 @@ value class LoxString(val value: String) : LoxValue {
     override fun toString(): String = value
 }
 
+interface LoxBindable {
+    fun bind(instance: LoxInstance): LoxValue
+}
+
 data class LoxFunction(
     val name: String,
     val params: List<Token>,
     val body: List<Stmt>,
     val closure: Environment,
     val isInitializer: Boolean,
-) : LoxValue, LoxCallable {
+) : LoxValue, LoxCallable, LoxBindable {
 
     constructor(declaration: Function, closure: Environment, isInitializer: Boolean = false) : this(
         declaration.name.lexeme, declaration.params, declaration.body, closure, isInitializer
@@ -51,7 +55,7 @@ data class LoxFunction(
 
     override val arity: Int = params.size
 
-    fun bind(instance: LoxInstance): LoxFunction {
+    override fun bind(instance: LoxInstance): LoxFunction {
         val environment = Environment(closure)
         environment.define("this", instance)
         return LoxFunction(name, params, body, environment, isInitializer)
@@ -83,9 +87,9 @@ abstract class LoxNativeFun(override val arity: Int) : LoxValue, LoxCallable {
     override fun toString(): String = "<native fun>"
 }
 
-data class LoxGetter(val name: String, val body: List<Stmt>, val closure: Environment) : LoxValue {
+data class LoxGetter(val name: String, val body: List<Stmt>, val closure: Environment) : LoxValue, LoxBindable {
 
-    fun bind(instance: LoxInstance): LoxGetter {
+    override fun bind(instance: LoxInstance): LoxGetter {
         val environment = Environment(closure)
         environment.define("this", instance)
         return LoxGetter(name, body, environment)
