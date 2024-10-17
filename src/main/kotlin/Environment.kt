@@ -1,7 +1,7 @@
 package cz.vojtasii.lox
 
 class Environment(
-    private val enclosing: Environment? = null,
+    val enclosing: Environment? = null,
 ) {
     private val values = mutableMapOf<String, LoxValue>()
 

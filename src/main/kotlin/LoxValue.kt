@@ -112,6 +112,7 @@ sealed interface LoxInstance : LoxValue {
 
 data class LoxClass(
     val name: String,
+    val superclass: LoxClass?,
     val methods: Map<String, LoxFunction>,
     val getters: Map<String, LoxGetter>,
     val staticMethods: Map<String, LoxFunction>,
@@ -129,8 +130,11 @@ data class LoxClass(
         return instance
     }
 
-    fun findGetter(name: String): LoxGetter? = getters[name]
-    fun findMethod(name: String): LoxFunction? = methods[name]
+    fun findGetter(name: String): LoxGetter? =
+        getters[name] ?: superclass?.findGetter(name)
+
+    fun findMethod(name: String): LoxFunction? =
+        methods[name] ?: superclass?.findMethod(name)
 
     override fun get(name: Token): LoxValue =
         staticFields[name.lexeme]

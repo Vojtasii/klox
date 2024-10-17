@@ -14,6 +14,7 @@ data class Grouping(val expression: Expr) : Expr
 data class Literal(val value: LoxValue) : Expr
 data class Logical(val left: Expr, val operator: Token, val right: Expr) : Expr
 data class Set(val obj: Expr, val name: Token, val value: Expr) : Expr
+data class Super(val keyword: Token, val method: Token) : Expr
 data class This(val keyword: Token) : Expr
 data class Unary(val operator: Token, val right: Expr) : Expr
 data class Variable(val name: Token) : Expr

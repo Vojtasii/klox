@@ -46,10 +46,18 @@ class Parser(
     }
 
     /**
-     * classDecl → IDENTIFIER "{" ( "class" function | function | getter )* "}"
+     * classDecl → IDENTIFIER ( "<" IDENTIFIER )? "{" ( "class" function | function | getter )* "}"
      */
     private fun classDeclaration(): Stmt {
         val name = consume(TokenType.IDENTIFIER, "Expect class name.")
+
+        val superclass = if (match(TokenType.LESS)) {
+            consume(TokenType.IDENTIFIER, "Expect superclass name.")
+            Variable(previous())
+        } else {
+            null
+        }
+
         consume(TokenType.LEFT_BRACE, "Expect '{' before class body.")
 
         val staticMethods = mutableListOf<Function>()
@@ -74,7 +82,7 @@ class Parser(
 
         consume(TokenType.RIGHT_BRACE, "Expect '}' after class body.")
 
-        return Class(name, methods, getters, staticMethods)
+        return Class(name, superclass, methods, getters, staticMethods)
     }
 
     /**
@@ -480,6 +488,7 @@ class Parser(
     /**
      * primary → NUMBER | STRING | "true" | "false" | "nil"
      *         | "(" expression ")"
+     *         | THIS | "super" "." IDENTIFIER
      *         | IDENTIFIER
      */
     private fun primary(): Expr {
@@ -503,6 +512,12 @@ class Parser(
                 AnonymousFunction(parameters, body)
             }
             match(TokenType.THIS) -> This(previous())
+            match(TokenType.SUPER) -> {
+                val keyword = previous()
+                consume(TokenType.DOT, "Expect '.' after 'super'.")
+                val method = consume(TokenType.IDENTIFIER, "Expect superclass method name.")
+                Super(keyword, method)
+            }
             match(TokenType.IDENTIFIER) -> Variable(previous())
             else -> throw error(peek(), "Expect expression.")
         }

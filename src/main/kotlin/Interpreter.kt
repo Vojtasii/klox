@@ -54,7 +54,18 @@ class Interpreter : ExprVisitor<LoxValue>, StmtVisitor<Unit> {
             is Block -> executeBlock(stmt.statements, Environment(environment))
             is Break -> throw BreakJump()
             is Class -> {
+                val superclass = stmt.superclass?.let {
+                    visit(it) as? LoxClass
+                        ?: throw RuntimeError(stmt.superclass.name, "Superclass must be a class.")
+                }
+
                 environment.define(stmt.name.lexeme, LoxNil)
+
+                if (superclass != null) {
+                    environment = Environment(environment).apply {
+                        define("super", superclass)
+                    }
+                }
 
                 val methods = stmt.methods.associate { method ->
                     val function = LoxFunction(method, environment, method.name.lexeme == "init")
@@ -69,7 +80,12 @@ class Interpreter : ExprVisitor<LoxValue>, StmtVisitor<Unit> {
                     staticMethod.name.lexeme to function
                 }
 
-                val klass = LoxClass(stmt.name.lexeme, methods, getters, staticMethods)
+                val klass = LoxClass(stmt.name.lexeme, superclass, methods, getters, staticMethods)
+
+                if (superclass != null) {
+                    environment = requireNotNull(environment.enclosing)
+                }
+
                 environment.assign(stmt.name, klass)
             }
             is Expression -> visit(stmt.expression)
@@ -114,6 +130,15 @@ class Interpreter : ExprVisitor<LoxValue>, StmtVisitor<Unit> {
             is Literal -> expr.value
             is Logical -> evaluateLogicalExpr(expr)
             is Set -> evaluateSetExpr(expr)
+            is Super -> {
+                val distance = requireNotNull(locals[expr])
+                val superclass = environment.getAt(distance, "super") as LoxClass
+                // 'super' is always stored in the enclosing environment where 'this' is stored
+                val obj = environment.getAt(distance - 1, "this") as LoxInstance
+                val method = superclass.findMethod(expr.method.lexeme)
+                method?.bind(obj)
+                    ?: throw RuntimeError(expr.method, "Undefined property '${expr.method.lexeme}'.")
+            }
             is This -> lookUpVariable(expr.keyword, expr)
             is TernaryConditional -> evaluateTernaryCondExpr(expr)
             is Unary -> evaluateUnaryExpr(expr)

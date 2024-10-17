@@ -19,6 +19,7 @@ object AstPrinter : ExprVisitor<String> {
         is Get -> parenthesize("get .${expr.name.lexeme}", expr.obj)
         is Set -> parenthesize("set .${expr.name.lexeme}", expr.obj, expr.value)
         is This -> expr.keyword.lexeme
+        is Super -> parenthesize("${expr.keyword.lexeme} .${expr.method.lexeme}")
     }
 
     private fun parenthesize(name: String, vararg exprs: Expr) = buildString {

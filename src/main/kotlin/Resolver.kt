@@ -29,6 +29,18 @@ class Resolver(
                 declare(stmt.name)
                 define(stmt.name)
 
+                if (stmt.superclass != null) {
+                    currentClass = ClassType.SUBCLASS
+                    if (stmt.name.lexeme != stmt.superclass.name.lexeme) {
+                        visit(stmt.superclass)
+                    } else {
+                        Lox.error(stmt.superclass.name, "A class can't inherit from itself.")
+                    }
+
+                    beginScope()
+                    scopes.last()["super"] = VarDef(stmt.superclass.name, VarState.USED)
+                }
+
                 beginScope()
                 scopes.last()["this"] = VarDef(stmt.name, VarState.USED)
 
@@ -50,6 +62,8 @@ class Resolver(
                 }
 
                 endScope()
+
+                if (stmt.superclass != null) endScope()
 
                 currentClass = enclosingClass
             }
@@ -122,6 +136,19 @@ class Resolver(
             is Set -> {
                 visit(expr.value)
                 visit(expr.obj)
+            }
+            is Super -> {
+                when (currentClass) {
+                    ClassType.NONE -> Lox.error(
+                        expr.keyword, "Can't use 'super' outside of a class."
+                    )
+                    ClassType.CLASS -> Lox.error(
+                        expr.keyword, "Can't use 'super' in a class with no superclass."
+                    )
+                    ClassType.SUBCLASS -> Unit
+                }
+
+                resolveLocal(expr, expr.keyword)
             }
             is This -> {
                 if (currentClass == ClassType.NONE) {

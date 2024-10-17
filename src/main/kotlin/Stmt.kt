@@ -10,6 +10,7 @@ data class Block(val statements: List<Stmt>) : Stmt
 data class Break(val keyword: Token) : Stmt
 data class Class(
     val name: Token,
+    val superclass: Variable?,
     val methods: List<Function>,
     val getters: List<Getter>,
     val staticMethods: List<Function>,
@@ -31,7 +32,7 @@ enum class FunctionType {
 }
 
 enum class ClassType {
-    NONE, CLASS;
+    NONE, CLASS, SUBCLASS;
 }
 
 enum class LoopType {
