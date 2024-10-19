@@ -7,7 +7,7 @@ class Parser(
     private var current = 0
 
     /**
-     * program → statement* EOF
+     * program → declaration* EOF
      */
     fun parse(): List<Stmt> =
         buildList {
@@ -20,24 +20,26 @@ class Parser(
         }
 
     /**
-     * declaration → "class" classDecl
-     *             | "fun" function
-     *             | "var" varDecl
+     * declaration → "class" classDeclaration
+     *             | "var" varDeclaration
+     *             | "fun" IDENTIFIER functionDefinition
      *             | statement
      */
     private fun declaration(): Stmt? = try {
         when {
             match(TokenType.CLASS) -> classDeclaration()
-            match(TokenType.FUN) -> when (peek().type) {
-                TokenType.IDENTIFIER -> function(FunctionType.FUNCTION)
+            match(TokenType.VAR) -> varDeclaration()
+            match(TokenType.FUN) -> when {
+                match(TokenType.IDENTIFIER) -> {
+                    val name = previous()
+                    val (parameters, body) = functionDefinition(FunctionType.FUNCTION)
+                    Function(name, parameters, body)
+                }
                 else -> {
-                    // Special-case handling for a potential anonymous function in expression statement.
-                    // Unparse 'fun'.
-                    recede()
-                    expressionStatement()
+                    recede() // unparse "fun"
+                    expressionStatement() // has to be an anonymous function
                 }
             }
-            match(TokenType.VAR) -> varDeclaration()
             else -> statement()
         }
     } catch (error: ParseError) {
@@ -46,7 +48,8 @@ class Parser(
     }
 
     /**
-     * classDecl → IDENTIFIER ( "<" IDENTIFIER )? "{" ( "class" function | function | getter )* "}"
+     * classDeclaration → IDENTIFIER ( "<" IDENTIFIER )?
+     *                    "{" ( "class" methodOrGetter | methodOrGetter )* "}"
      */
     private fun classDeclaration(): Stmt {
         val name = consume(TokenType.IDENTIFIER, "Expect class name.")
@@ -65,18 +68,14 @@ class Parser(
         val getters = mutableListOf<Getter>()
         while (!check(TokenType.RIGHT_BRACE) && !isAtEnd()) {
             when {
-                match(TokenType.CLASS) -> staticMethods.add(function(FunctionType.METHOD))
-                match(TokenType.IDENTIFIER) -> {
-                    val memberName = previous()
-                    when {
-                        match(TokenType.LEFT_BRACE) -> getters.add(Getter(memberName, block()))
-                        else -> {
-                            recede()
-                            methods.add(function(FunctionType.METHOD))
-                        }
-                    }
+                match(TokenType.CLASS) -> when (val member = methodOrGetter()) {
+                    is Function -> staticMethods.add(member)
+                    is Getter -> error(member.name, "Static getter is not allowed.")
                 }
-                else -> throw error(peek(), "Expect method or getter name.")
+                else -> when (val member = methodOrGetter()) {
+                    is Function -> methods.add(member)
+                    is Getter -> getters.add(member)
+                }
             }
         }
 
@@ -86,7 +85,22 @@ class Parser(
     }
 
     /**
-     * varDecl → IDENTIFIER ( "=" expression )? ";"
+     * methodOrGetter → IDENTIFIER functionDefinition
+     *                | IDENTIFIER "{" block
+     */
+    private fun methodOrGetter(): MethodOrGetter {
+        val name = consume(TokenType.IDENTIFIER, "Expect method or getter name.")
+        return when {
+            match(TokenType.LEFT_BRACE) -> Getter(name, block())
+            else -> {
+                val (parameters, body) = functionDefinition(FunctionType.METHOD)
+                Function(name, parameters, body)
+            }
+        }
+    }
+
+    /**
+     * varDeclaration → IDENTIFIER ( "=" expression )? ";"
      */
     private fun varDeclaration(): Stmt {
         val name = consume(TokenType.IDENTIFIER, "Expect variable name.")
@@ -99,7 +113,7 @@ class Parser(
     }
 
     /**
-     * whileStmt → "while" "(" expression ")" statement
+     * whileStatement → "while" "(" expression ")" statement
      */
     private fun whileStatement(): Stmt {
         consume(TokenType.LEFT_PAREN, "Expect '(' after 'while'.")
@@ -111,7 +125,7 @@ class Parser(
     }
 
     /**
-     * forStmt → "for" "(" ( "var" varDecl | exprStmt | ";" ) expression? ";" expression? ")" statement
+     * forStatement → "for" "(" ( "var" varDecl | exprStmt | ";" ) expression? ";" expression? ")" statement
      */
     private fun forStatement(): Stmt {
         consume(TokenType.LEFT_PAREN, "Expect '(' after 'for'.")
@@ -150,14 +164,14 @@ class Parser(
     }
 
     /**
-     * statement → exprStmt
-     *           | forStmt
-     *           | ifStmt
-     *           | printStmt
-     *           | whileStmt
-     *           | returnStmt
-     *           | breakStmt
-     *           | block
+     * statement → "for" forStatement
+     *           | "if" ifStatement
+     *           | "print" printStatement
+     *           | "while" whileStatement
+     *           | "return" returnStatement
+     *           | "break" breakStatement
+     *           | "{" block
+     *           | expressionStatement
      */
     private fun statement(): Stmt {
         return when {
@@ -173,7 +187,7 @@ class Parser(
     }
 
     /**
-     * ifStmt → "if" "(" expression ")" statement ( "else" statement )?
+     * ifStatement → "if" "(" expression ")" statement ( "else" statement )?
      */
     private fun ifStatement(): Stmt {
         consume(TokenType.LEFT_PAREN, "Expect '(' after 'if'.")
@@ -187,7 +201,7 @@ class Parser(
     }
 
     /**
-     * printStmt → "print" expression ";"
+     * printStatement → "print" expression ";"
      */
     private fun printStatement(): Stmt {
         val expr = expression()
@@ -196,7 +210,7 @@ class Parser(
     }
 
     /**
-     * returnStmt → "return" expression? ";"
+     * returnStatement → "return" expression? ";"
      */
     private fun returnStatement(): Stmt {
         val keyword = previous()
@@ -207,35 +221,35 @@ class Parser(
     }
 
     /**
-     * exprStmt → expression ";"
+     * expressionStatement → expression ";"
+     *               | expression EOF # REPL mode only
      */
     private fun expressionStatement(): Stmt {
-        val expr = expression()
+        val expression = expression()
         return when (mode) {
             Mode.STANDARD -> {
                 consume(TokenType.SEMICOLON, "Expect ';' after value.")
-                Expression(expr)
+                Expression(expression)
             }
             Mode.REPL -> when {
-                match(TokenType.SEMICOLON) -> Expression(expr)
-                isAtEnd() -> Print(expr)
+                match(TokenType.SEMICOLON) -> Expression(expression)
+                isAtEnd() -> Print(expression)
                 else -> throw error(peek(), "Invalid expression or missing ';' after value.")
             }
         }
     }
 
     /**
-     * function → IDENTIFIER "(" parameters? ")" block
+     * functionDefinition → "(" parameters? ")" "{" block
      */
-    private fun function(type: FunctionType): Function {
-        val name = consume(TokenType.IDENTIFIER, "Expect $type name.")
-        consume(TokenType.LEFT_PAREN, "Expect '(' after $type name.")
+    private fun functionDefinition(type: FunctionType): AnonymousFunction {
+        consume(TokenType.LEFT_PAREN, "Expect '(' after $type declaration.")
         val parameters = parameters()
         consume(TokenType.RIGHT_PAREN, "Expect ')' after parameters.")
 
         consume(TokenType.LEFT_BRACE, "Expect '{' before $type body.")
         val body = block()
-        return Function(name, parameters, body)
+        return AnonymousFunction(parameters, body)
     }
 
     /**
@@ -262,7 +276,7 @@ class Parser(
     }
 
     /**
-     * block → "{" declaration* "}"
+     * block → declaration* "}"
      */
     private fun block(): List<Stmt> = buildList {
         while (!check(TokenType.RIGHT_BRACE) && !isAtEnd()) {
@@ -299,10 +313,10 @@ class Parser(
         val expr = assignment()
 
         return if (match(TokenType.QUESTION)) {
-            val truly = assignment()
+            val thenBranch = assignment()
             consume(TokenType.COLON, "Expect ':' after first expression in ternary conditional.")
-            val falsy = conditional()
-            TernaryConditional(expr, truly, falsy)
+            val elseBranch = conditional()
+            TernaryConditional(expr, thenBranch, elseBranch)
         } else {
             expr
         }
@@ -437,7 +451,7 @@ class Parser(
     }
 
     /**
-     * call → primary ( "(" arguments? ")" | "." IDENTIFIER )*
+     * call → primary ( "(" finishCall | "." IDENTIFIER )*
      */
     private fun call(): Expr {
         var expr = primary()
@@ -457,9 +471,7 @@ class Parser(
     }
 
     /**
-     * Implements 'arguments' rule while matching for ')'.
-     *
-     * arguments → argument ( "," argument )*
+     * finishCall → argument ( "," argument )*
      */
     private fun finishCall(callee: Expr): Expr {
         val arguments = if (check(TokenType.RIGHT_PAREN)) {
@@ -488,7 +500,9 @@ class Parser(
     /**
      * primary → NUMBER | STRING | "true" | "false" | "nil"
      *         | "(" expression ")"
-     *         | THIS | "super" "." IDENTIFIER
+     *         | "fun" functionDefinition
+     *         | "this"
+     *         | "super" "." IDENTIFIER
      *         | IDENTIFIER
      */
     private fun primary(): Expr {
@@ -502,15 +516,7 @@ class Parser(
                 consume(TokenType.RIGHT_PAREN, "Expect ')' after expression.")
                 Grouping(expr)
             }
-            match(TokenType.FUN) -> {
-                consume(TokenType.LEFT_PAREN, "Expect '(' after 'fun'.")
-                val parameters = parameters()
-                consume(TokenType.RIGHT_PAREN, "Expect ')' after parameters.")
-
-                consume(TokenType.LEFT_BRACE, "Expect '{' before anonymous function body.")
-                val body = block()
-                AnonymousFunction(parameters, body)
-            }
+            match(TokenType.FUN) -> functionDefinition(FunctionType.ANONYMOUS_FUNCTION)
             match(TokenType.THIS) -> This(previous())
             match(TokenType.SUPER) -> {
                 val keyword = previous()

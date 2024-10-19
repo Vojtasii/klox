@@ -263,9 +263,9 @@ class Interpreter : ExprVisitor<LoxValue>, StmtVisitor<Unit> {
         val condition = visit(expr.condition)
 
         return if (condition.isTruthy) {
-            visit(expr.truly)
+            visit(expr.thenBranch)
         } else {
-            visit(expr.falsy)
+            visit(expr.elseBranch)
         }
     }
 

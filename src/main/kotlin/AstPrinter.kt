@@ -15,7 +15,7 @@ object AstPrinter : ExprVisitor<String> {
         is Unary -> parenthesize(expr.operator.lexeme, expr.right)
         is Variable -> expr.name.lexeme
         is Assign -> parenthesize("let ${expr.name.lexeme}", expr.value)
-        is TernaryConditional -> parenthesize("cond", expr.condition, expr.truly, expr.falsy)
+        is TernaryConditional -> parenthesize("cond", expr.condition, expr.thenBranch, expr.elseBranch)
         is Get -> parenthesize("get .${expr.name.lexeme}", expr.obj)
         is Set -> parenthesize("set .${expr.name.lexeme}", expr.obj, expr.value)
         is This -> expr.keyword.lexeme

@@ -19,4 +19,4 @@ data class This(val keyword: Token) : Expr
 data class Unary(val operator: Token, val right: Expr) : Expr
 data class Variable(val name: Token) : Expr
 data class Assign(val name: Token, val value: Expr) : Expr
-data class TernaryConditional(val condition: Expr, val truly: Expr, val falsy: Expr) : Expr
+data class TernaryConditional(val condition: Expr, val thenBranch: Expr, val elseBranch: Expr) : Expr

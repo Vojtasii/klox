@@ -113,7 +113,7 @@ class Resolver(
 
     override fun visit(expr: Expr) {
         when (expr) {
-            is AnonymousFunction -> resolveFunction(expr.params, expr.body, FunctionType.FUNCTION)
+            is AnonymousFunction -> resolveFunction(expr.params, expr.body, FunctionType.ANONYMOUS_FUNCTION)
             is Assign -> {
                 visit(expr.value)
                 resolveLocal(expr, expr.name)
@@ -159,8 +159,8 @@ class Resolver(
             }
             is TernaryConditional -> {
                 visit(expr.condition)
-                visit(expr.truly)
-                visit(expr.falsy)
+                visit(expr.thenBranch)
+                visit(expr.elseBranch)
             }
             is Unary -> visit(expr.right)
             is Variable -> {
