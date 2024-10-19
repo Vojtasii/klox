@@ -7,6 +7,5 @@ data class Token(
     val line: Int,
     val column: Int,
 ) {
-    override fun toString(): String =
-        "$type $lexeme $literal"
+    override fun toString(): String = "$type $lexeme $literal"
 }

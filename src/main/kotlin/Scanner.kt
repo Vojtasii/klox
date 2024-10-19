@@ -20,8 +20,8 @@ class Scanner(
         return tokens
     }
 
-    private fun scanToken() {
-        return when (val c = advance()) {
+    private fun scanToken() =
+        when (val c = advance()) {
             '(' -> addToken(TokenType.LEFT_PAREN)
             ')' -> addToken(TokenType.RIGHT_PAREN)
             '{' -> addToken(TokenType.LEFT_BRACE)
@@ -34,45 +34,50 @@ class Scanner(
             '*' -> addToken(TokenType.STAR)
             '?' -> addToken(TokenType.QUESTION)
             ':' -> addToken(TokenType.COLON)
-            '!' -> addToken(
-                if (match('=')) TokenType.BANG_EQUAL else TokenType.BANG
-            )
-            '=' -> addToken(
-                if (match('=')) TokenType.EQUAL_EQUAL else TokenType.EQUAL
-            )
-            '<' -> addToken(
-                if (match('=')) TokenType.LESS_EQUAL else TokenType.LESS
-            )
-            '>' -> addToken(
-                if (match('=')) TokenType.GREATER_EQUAL else TokenType.GREATER
-            )
-            '/' -> when {
-                match('/') -> {
-                    // A comment goes until the end of the line.
-                    while (peek() != '\n' && !isAtEnd()) advance()
-                }
-                match('*') -> {
-                    // A comment goes until finding a matching `*/`
-                    while (!(peek() == '*' && peekNext() == '/') && !isAtEnd()) advance()
-                    if (!isAtEnd()) {
-                        // The closing `*` and `/`
-                        advance()
-                        advance()
+            '!' ->
+                addToken(
+                    if (match('=')) TokenType.BANG_EQUAL else TokenType.BANG,
+                )
+            '=' ->
+                addToken(
+                    if (match('=')) TokenType.EQUAL_EQUAL else TokenType.EQUAL,
+                )
+            '<' ->
+                addToken(
+                    if (match('=')) TokenType.LESS_EQUAL else TokenType.LESS,
+                )
+            '>' ->
+                addToken(
+                    if (match('=')) TokenType.GREATER_EQUAL else TokenType.GREATER,
+                )
+            '/' ->
+                when {
+                    match('/') -> {
+                        // A comment goes until the end of the line.
+                        while (peek() != '\n' && !isAtEnd()) advance()
                     }
-                    Unit
+                    match('*') -> {
+                        // A comment goes until finding a matching `*/`
+                        while (!(peek() == '*' && peekNext() == '/') && !isAtEnd()) advance()
+                        if (!isAtEnd()) {
+                            // The closing `*` and `/`
+                            advance()
+                            advance()
+                        }
+                        Unit
+                    }
+                    else -> addToken(TokenType.SLASH)
                 }
-                else -> addToken(TokenType.SLASH)
-            }
             ' ', '\r', '\t' -> Unit // Ignore whitespace
             '\n' -> newLine()
             '"' -> string()
-            else -> when {
-                c.isDigit() -> number()
-                c.isAlpha() -> identifier()
-                else -> Lox.error(line, start - lineStart, "Unexpected character.")
-            }
+            else ->
+                when {
+                    c.isDigit() -> number()
+                    c.isAlpha() -> identifier()
+                    else -> Lox.error(line, start - lineStart, "Unexpected character.")
+                }
         }
-    }
 
     private fun identifier() {
         while (peek().isAlphaNumeric()) advance()
@@ -123,41 +128,52 @@ class Scanner(
         }
 
     private fun peek(): Char = if (isAtEnd()) '\u0000' else source[current]
+
     private fun peekNext(): Char = if (current + 1 >= source.length) '\u0000' else source[current + 1]
+
     private fun Char.isDigit() = this in '0'..'9'
+
     private fun Char.isAlpha() = this in 'a'..'z' || this in 'A'..'Z' || this == '_'
+
     private fun Char.isAlphaNumeric() = this.isAlpha() || this.isDigit()
+
     private fun isAtEnd(): Boolean = current >= source.length
+
     private fun advance(): Char = source[current++]
+
     private fun newLine() {
         line++
         lineStart = current
     }
 
-    private fun addToken(type: TokenType, literal: LoxValue? = null) {
+    private fun addToken(
+        type: TokenType,
+        literal: LoxValue? = null,
+    ) {
         val text = source.substring(start, current)
         tokens += Token(type, text, literal, line, start - lineStart)
     }
 
     companion object {
-        private val keywords: Map<String, TokenType> = mapOf(
-            "and" to TokenType.AND,
-            "break" to TokenType.BREAK,
-            "class" to TokenType.CLASS,
-            "else" to TokenType.ELSE,
-            "false" to TokenType.FALSE,
-            "for" to TokenType.FOR,
-            "fun" to TokenType.FUN,
-            "if" to TokenType.IF,
-            "nil" to TokenType.NIL,
-            "or" to TokenType.OR,
-            "print" to TokenType.PRINT,
-            "return" to TokenType.RETURN,
-            "super" to TokenType.SUPER,
-            "this" to TokenType.THIS,
-            "true" to TokenType.TRUE,
-            "var" to TokenType.VAR,
-            "while" to TokenType.WHILE,
-        )
+        private val keywords: Map<String, TokenType> =
+            mapOf(
+                "and" to TokenType.AND,
+                "break" to TokenType.BREAK,
+                "class" to TokenType.CLASS,
+                "else" to TokenType.ELSE,
+                "false" to TokenType.FALSE,
+                "for" to TokenType.FOR,
+                "fun" to TokenType.FUN,
+                "if" to TokenType.IF,
+                "nil" to TokenType.NIL,
+                "or" to TokenType.OR,
+                "print" to TokenType.PRINT,
+                "return" to TokenType.RETURN,
+                "super" to TokenType.SUPER,
+                "this" to TokenType.THIS,
+                "true" to TokenType.TRUE,
+                "var" to TokenType.VAR,
+                "while" to TokenType.WHILE,
+            )
     }
 }

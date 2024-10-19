@@ -5,11 +5,17 @@ class Environment(
 ) {
     private val values = mutableMapOf<String, LoxValue>()
 
-    fun define(name: String, value: LoxValue) {
+    fun define(
+        name: String,
+        value: LoxValue,
+    ) {
         values[name] = value
     }
 
-    fun assign(name: Token, value: LoxValue): Unit =
+    fun assign(
+        name: Token,
+        value: LoxValue,
+    ): Unit =
         if (name.lexeme in values) {
             values[name.lexeme] = value
         } else if (enclosing != null) {
@@ -18,7 +24,11 @@ class Environment(
             throw RuntimeError(name, "Undefined variable '${name.lexeme}'.")
         }
 
-    fun assignAt(distance: Int, name: Token, value: LoxValue) {
+    fun assignAt(
+        distance: Int,
+        name: Token,
+        value: LoxValue,
+    ) {
         ancestor(distance).values.put(name.lexeme, value)
     }
 
@@ -31,8 +41,10 @@ class Environment(
             }
         }
 
-    fun getAt(distance: Int, name: String): LoxValue =
-        ancestor(distance).values.getValue(name)
+    fun getAt(
+        distance: Int,
+        name: String,
+    ): LoxValue = ancestor(distance).values.getValue(name)
 
     private fun ancestor(distance: Int): Environment {
         var environment = this

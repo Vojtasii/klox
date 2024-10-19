@@ -2,16 +2,21 @@ package cz.vojtasii.lox
 
 import java.util.IdentityHashMap
 
-class Interpreter : ExprVisitor<LoxValue>, StmtVisitor<Unit> {
-    private val globals: Environment = Environment().apply {
-        define(
-            "clock",
-            object : LoxNativeFun(0) {
-                override fun call(interpreter: Interpreter, arguments: List<LoxValue>): LoxNumber =
-                    LoxNumber(System.currentTimeMillis() / 1000.0)
-            },
-        )
-    }
+class Interpreter :
+    ExprVisitor<LoxValue>,
+    StmtVisitor<Unit> {
+    private val globals: Environment =
+        Environment().apply {
+            define(
+                "clock",
+                object : LoxNativeFun(0) {
+                    override fun call(
+                        interpreter: Interpreter,
+                        arguments: List<LoxValue>,
+                    ): LoxNumber = LoxNumber(System.currentTimeMillis() / 1000.0)
+                },
+            )
+        }
     private var environment: Environment = globals
     private val locals: IdentityHashMap<Expr, Int> = IdentityHashMap()
 
@@ -29,7 +34,10 @@ class Interpreter : ExprVisitor<LoxValue>, StmtVisitor<Unit> {
         visit(statement)
     }
 
-    fun resolve(expr: Expr, depth: Int) {
+    fun resolve(
+        expr: Expr,
+        depth: Int,
+    ) {
         locals[expr] = depth
     }
 
@@ -54,31 +62,36 @@ class Interpreter : ExprVisitor<LoxValue>, StmtVisitor<Unit> {
             is Block -> executeBlock(stmt.statements, Environment(environment))
             is Break -> throw BreakJump()
             is Class -> {
-                val superclass = stmt.superclass?.let {
-                    visit(it) as? LoxClass
-                        ?: throw RuntimeError(stmt.superclass.name, "Superclass must be a class.")
-                }
+                val superclass =
+                    stmt.superclass?.let {
+                        visit(it) as? LoxClass
+                            ?: throw RuntimeError(stmt.superclass.name, "Superclass must be a class.")
+                    }
 
                 environment.define(stmt.name.lexeme, LoxNil)
 
                 if (superclass != null) {
-                    environment = Environment(environment).apply {
-                        define("super", superclass)
-                    }
+                    environment =
+                        Environment(environment).apply {
+                            define("super", superclass)
+                        }
                 }
 
-                val methods = stmt.methods.associate { method ->
-                    val function = LoxFunction(method, environment, method.name.lexeme == "init")
-                    method.name.lexeme to function
-                }
-                val getters = stmt.getters.associate { getter ->
-                    val loxGetter = LoxGetter(getter.name.lexeme, getter.body, environment)
-                    getter.name.lexeme to loxGetter
-                }
-                val staticMethods = stmt.staticMethods.associate { staticMethod ->
-                    val function = LoxFunction(staticMethod, environment)
-                    staticMethod.name.lexeme to function
-                }
+                val methods =
+                    stmt.methods.associate { method ->
+                        val function = LoxFunction(method, environment, method.name.lexeme == "init")
+                        method.name.lexeme to function
+                    }
+                val getters =
+                    stmt.getters.associate { getter ->
+                        val loxGetter = LoxGetter(getter.name.lexeme, getter.body, environment)
+                        getter.name.lexeme to loxGetter
+                    }
+                val staticMethods =
+                    stmt.staticMethods.associate { staticMethod ->
+                        val function = LoxFunction(staticMethod, environment)
+                        staticMethod.name.lexeme to function
+                    }
 
                 val klass = LoxClass(stmt.name.lexeme, superclass, methods, getters, staticMethods)
 
@@ -94,11 +107,12 @@ class Interpreter : ExprVisitor<LoxValue>, StmtVisitor<Unit> {
                 environment.define(stmt.name.lexeme, function)
             }
             is Getter -> error("Getter should never appear outside of class context.")
-            is If -> if (visit(stmt.condition).isTruthy) {
-                execute(stmt.thenBranch)
-            } else if (stmt.elseBranch != null) {
-                execute(stmt.elseBranch)
-            }
+            is If ->
+                if (visit(stmt.condition).isTruthy) {
+                    execute(stmt.thenBranch)
+                } else if (stmt.elseBranch != null) {
+                    execute(stmt.elseBranch)
+                }
             is Print -> {
                 val value = visit(stmt.expression)
                 println(value)
@@ -111,12 +125,13 @@ class Interpreter : ExprVisitor<LoxValue>, StmtVisitor<Unit> {
                 val value = stmt.initializer?.let { visit(it) } ?: LoxNil
                 environment.define(stmt.name.lexeme, value)
             }
-            is While -> try {
-                while (visit(stmt.condition).isTruthy) {
-                    execute(stmt.body)
+            is While ->
+                try {
+                    while (visit(stmt.condition).isTruthy) {
+                        execute(stmt.body)
+                    }
+                } catch (_: BreakJump) {
                 }
-            } catch (_: BreakJump) {
-            }
         }
     }
 
@@ -135,9 +150,10 @@ class Interpreter : ExprVisitor<LoxValue>, StmtVisitor<Unit> {
                 val superclass = environment.getAt(distance, "super") as LoxClass
                 // 'super' is always stored in the enclosing environment where 'this' is stored
                 val obj = environment.getAt(distance - 1, "this") as LoxInstance
-                val bindable: LoxBindable? = with(superclass) {
-                    findGetter(expr.method.lexeme) ?: findMethod(expr.method.lexeme)
-                }
+                val bindable: LoxBindable? =
+                    with(superclass) {
+                        findGetter(expr.method.lexeme) ?: findMethod(expr.method.lexeme)
+                    }
                 bindable?.bind(obj)?.let {
                     if (it is LoxGetter) it.evaluate(this) else it
                 } ?: throw RuntimeError(expr.method, "Undefined property '${expr.method.lexeme}'.")
@@ -146,14 +162,15 @@ class Interpreter : ExprVisitor<LoxValue>, StmtVisitor<Unit> {
             is TernaryConditional -> evaluateTernaryCondExpr(expr)
             is Unary -> evaluateUnaryExpr(expr)
             is Variable -> lookUpVariable(expr.name, expr)
-            is Assign -> visit(expr.value).also { value ->
-                val distance = locals[expr]
-                if (distance != null) {
-                    environment.assignAt(distance, expr.name, value)
-                } else {
-                    globals.assign(expr.name, value)
+            is Assign ->
+                visit(expr.value).also { value ->
+                    val distance = locals[expr]
+                    if (distance != null) {
+                        environment.assignAt(distance, expr.name, value)
+                    } else {
+                        globals.assign(expr.name, value)
+                    }
                 }
-            }
         }
 
     private fun evaluateLogicalExpr(expr: Logical): LoxValue {
@@ -171,9 +188,10 @@ class Interpreter : ExprVisitor<LoxValue>, StmtVisitor<Unit> {
 
         return when (expr.operator.type) {
             TokenType.BANG -> LoxBoolean(!right.isTruthy)
-            TokenType.MINUS -> expectNumber(expr.operator, right) { r ->
-                LoxNumber(-r.value)
-            }
+            TokenType.MINUS ->
+                expectNumber(expr.operator, right) { r ->
+                    LoxNumber(-r.value)
+                }
             else -> throw RuntimeError(expr.operator, "Unexpected unary operator.")
         }
     }
@@ -183,33 +201,41 @@ class Interpreter : ExprVisitor<LoxValue>, StmtVisitor<Unit> {
         val right = visit(expr.right)
 
         return when (expr.operator.type) {
-            TokenType.MINUS -> expectNumbers(expr.operator, left, right) { l, r ->
-                LoxNumber(l.value - r.value)
-            }
-            TokenType.SLASH -> expectNumbers(expr.operator, left, right) { l, r ->
-                LoxNumber(l.value / r.value)
-            }
-            TokenType.STAR -> expectNumbers(expr.operator, left, right) { l, r ->
-                LoxNumber(l.value * r.value)
-            }
-            TokenType.PLUS -> when {
-                left is LoxNumber && right is LoxNumber -> LoxNumber(left.value + right.value)
-                left is LoxString -> LoxString(left.value + right.toString())
-                right is LoxString -> LoxString(left.toString() + right.value)
-                else -> throw RuntimeError(expr.operator, "Expect numbers or strings")
-            }
-            TokenType.GREATER -> expectNumbers(expr.operator, left, right) { l, r ->
-                LoxBoolean(l.value > r.value)
-            }
-            TokenType.GREATER_EQUAL -> expectNumbers(expr.operator, left, right) { l, r ->
-                LoxBoolean(l.value >= r.value)
-            }
-            TokenType.LESS -> expectNumbers(expr.operator, left, right) { l, r ->
-                LoxBoolean(l.value < r.value)
-            }
-            TokenType.LESS_EQUAL -> expectNumbers(expr.operator, left, right) { l, r ->
-                LoxBoolean(l.value <= r.value)
-            }
+            TokenType.MINUS ->
+                expectNumbers(expr.operator, left, right) { l, r ->
+                    LoxNumber(l.value - r.value)
+                }
+            TokenType.SLASH ->
+                expectNumbers(expr.operator, left, right) { l, r ->
+                    LoxNumber(l.value / r.value)
+                }
+            TokenType.STAR ->
+                expectNumbers(expr.operator, left, right) { l, r ->
+                    LoxNumber(l.value * r.value)
+                }
+            TokenType.PLUS ->
+                when {
+                    left is LoxNumber && right is LoxNumber -> LoxNumber(left.value + right.value)
+                    left is LoxString -> LoxString(left.value + right.toString())
+                    right is LoxString -> LoxString(left.toString() + right.value)
+                    else -> throw RuntimeError(expr.operator, "Expect numbers or strings")
+                }
+            TokenType.GREATER ->
+                expectNumbers(expr.operator, left, right) { l, r ->
+                    LoxBoolean(l.value > r.value)
+                }
+            TokenType.GREATER_EQUAL ->
+                expectNumbers(expr.operator, left, right) { l, r ->
+                    LoxBoolean(l.value >= r.value)
+                }
+            TokenType.LESS ->
+                expectNumbers(expr.operator, left, right) { l, r ->
+                    LoxBoolean(l.value < r.value)
+                }
+            TokenType.LESS_EQUAL ->
+                expectNumbers(expr.operator, left, right) { l, r ->
+                    LoxBoolean(l.value <= r.value)
+                }
             TokenType.BANG_EQUAL -> LoxBoolean(left != right)
             TokenType.EQUAL_EQUAL -> LoxBoolean(left == right)
             TokenType.COMMA -> right
@@ -222,35 +248,38 @@ class Interpreter : ExprVisitor<LoxValue>, StmtVisitor<Unit> {
 
         val arguments = expr.arguments.map(::visit)
 
-        val callable = callee as? LoxCallable
-            ?: throw RuntimeError(expr.paren, "Can only call functions and classes.")
+        val callable =
+            callee as? LoxCallable
+                ?: throw RuntimeError(expr.paren, "Can only call functions and classes.")
         if (arguments.size != callable.arity) {
             throw RuntimeError(expr.paren, "Expected ${callable.arity} arguments, but got ${arguments.size}.")
         }
         return callable.call(this, arguments)
     }
 
-    private fun evaluateGetExpr(expr: Get): LoxValue {
-        return when (val obj = visit(expr.obj)) {
-            is LoxInstance -> obj[expr.name].let {
-                // getters are evaluated immediately without a Call expression
-                if (it is LoxGetter) it.evaluate(this) else it
-            }
+    private fun evaluateGetExpr(expr: Get): LoxValue =
+        when (val obj = visit(expr.obj)) {
+            is LoxInstance ->
+                obj[expr.name].let {
+                    // getters are evaluated immediately without a Call expression
+                    if (it is LoxGetter) it.evaluate(this) else it
+                }
             else -> throw RuntimeError(expr.name, "Only instances have properties.")
         }
-    }
 
-    private fun evaluateSetExpr(expr: Set): LoxValue {
-        return when (val obj = visit(expr.obj)) {
+    private fun evaluateSetExpr(expr: Set): LoxValue =
+        when (val obj = visit(expr.obj)) {
             is LoxInstance -> {
                 val value = visit(expr.value)
                 obj.set(expr.name, value)
             }
             else -> throw RuntimeError(expr.name, "Only instances have fields.")
         }
-    }
 
-    private fun lookUpVariable(name: Token, expr: Expr): LoxValue {
+    private fun lookUpVariable(
+        name: Token,
+        expr: Expr,
+    ): LoxValue {
         val distance = locals[expr]
         return if (distance != null) {
             environment.getAt(distance, name.lexeme)
@@ -273,18 +302,20 @@ class Interpreter : ExprVisitor<LoxValue>, StmtVisitor<Unit> {
         operator: Token,
         operand: LoxValue,
         block: (LoxNumber) -> LoxValue,
-    ): LoxValue = when (operand) {
-        is LoxNumber -> block(operand)
-        else -> throw RuntimeError(operator, "Operand must be a number.")
-    }
+    ): LoxValue =
+        when (operand) {
+            is LoxNumber -> block(operand)
+            else -> throw RuntimeError(operator, "Operand must be a number.")
+        }
 
     private inline fun expectNumbers(
         operator: Token,
         left: LoxValue,
         right: LoxValue,
         block: (LoxNumber, LoxNumber) -> LoxValue,
-    ): LoxValue = when {
-        left is LoxNumber && right is LoxNumber -> block(left, right)
-        else -> throw RuntimeError(operator, "Operands must be numbers.")
-    }
+    ): LoxValue =
+        when {
+            left is LoxNumber && right is LoxNumber -> block(left, right)
+            else -> throw RuntimeError(operator, "Operands must be numbers.")
+        }
 }

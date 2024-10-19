@@ -8,22 +8,27 @@ import java.nio.file.Path
 import kotlin.io.path.name
 import kotlin.io.path.toPath
 
-internal class LoxTest : FunSpec({
-    val data = LoxTest::class.java.classLoader.getResource("lox")!!
-        .toURI().toPath().toFile()
-        .walkTopDown()
-        .filter { it.isFile && it.extension == "lox" }
-        .map { LoxFileData(it.absolutePath) }
+internal class LoxTest :
+    FunSpec({
+        val data =
+            LoxTest::class.java.classLoader
+                .getResource("lox")!!
+                .toURI()
+                .toPath()
+                .toFile()
+                .walkTopDown()
+                .filter { it.isFile && it.extension == "lox" }
+                .map { LoxFileData(it.absolutePath) }
 
-    context("Interpreting Lox code") {
-        withData(data) {
-            println("=== Run ${it.dataTestName()} ===")
-            shouldNotThrowAnyUnit {
-                Lox.main(arrayOf(it.path))
+        context("Interpreting Lox code") {
+            withData(data) {
+                println("=== Run ${it.dataTestName()} ===")
+                shouldNotThrowAnyUnit {
+                    Lox.main(arrayOf(it.path))
+                }
             }
         }
-    }
-})
+    })
 
 private data class LoxFileData(
     val path: String,

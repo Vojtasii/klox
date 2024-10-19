@@ -25,27 +25,29 @@ class Parser(
      *             | "fun" IDENTIFIER functionDefinition
      *             | statement
      */
-    private fun declaration(): Stmt? = try {
-        when {
-            match(TokenType.CLASS) -> classDeclaration()
-            match(TokenType.VAR) -> varDeclaration()
-            match(TokenType.FUN) -> when {
-                match(TokenType.IDENTIFIER) -> {
-                    val name = previous()
-                    val (parameters, body) = functionDefinition(FunctionType.FUNCTION)
-                    Function(name, parameters, body)
-                }
-                else -> {
-                    recede() // unparse "fun"
-                    expressionStatement() // has to be an anonymous function
-                }
+    private fun declaration(): Stmt? =
+        try {
+            when {
+                match(TokenType.CLASS) -> classDeclaration()
+                match(TokenType.VAR) -> varDeclaration()
+                match(TokenType.FUN) ->
+                    when {
+                        match(TokenType.IDENTIFIER) -> {
+                            val name = previous()
+                            val (parameters, body) = functionDefinition(FunctionType.FUNCTION)
+                            Function(name, parameters, body)
+                        }
+                        else -> {
+                            recede() // unparse "fun"
+                            expressionStatement() // has to be an anonymous function
+                        }
+                    }
+                else -> statement()
             }
-            else -> statement()
+        } catch (error: ParseError) {
+            synchronize()
+            null
         }
-    } catch (error: ParseError) {
-        synchronize()
-        null
-    }
 
     /**
      * classDeclaration → IDENTIFIER ( "<" IDENTIFIER )?
@@ -54,12 +56,13 @@ class Parser(
     private fun classDeclaration(): Stmt {
         val name = consume(TokenType.IDENTIFIER, "Expect class name.")
 
-        val superclass = if (match(TokenType.LESS)) {
-            consume(TokenType.IDENTIFIER, "Expect superclass name.")
-            Variable(previous())
-        } else {
-            null
-        }
+        val superclass =
+            if (match(TokenType.LESS)) {
+                consume(TokenType.IDENTIFIER, "Expect superclass name.")
+                Variable(previous())
+            } else {
+                null
+            }
 
         consume(TokenType.LEFT_BRACE, "Expect '{' before class body.")
 
@@ -68,14 +71,16 @@ class Parser(
         val getters = mutableListOf<Getter>()
         while (!check(TokenType.RIGHT_BRACE) && !isAtEnd()) {
             when {
-                match(TokenType.CLASS) -> when (val member = methodOrGetter()) {
-                    is Function -> staticMethods.add(member)
-                    is Getter -> error(member.name, "Static getter is not allowed.")
-                }
-                else -> when (val member = methodOrGetter()) {
-                    is Function -> methods.add(member)
-                    is Getter -> getters.add(member)
-                }
+                match(TokenType.CLASS) ->
+                    when (val member = methodOrGetter()) {
+                        is Function -> staticMethods.add(member)
+                        is Getter -> error(member.name, "Static getter is not allowed.")
+                    }
+                else ->
+                    when (val member = methodOrGetter()) {
+                        is Function -> methods.add(member)
+                        is Getter -> getters.add(member)
+                    }
             }
         }
 
@@ -130,22 +135,25 @@ class Parser(
     private fun forStatement(): Stmt {
         consume(TokenType.LEFT_PAREN, "Expect '(' after 'for'.")
 
-        val initializer = when {
-            match(TokenType.SEMICOLON) -> null
-            match(TokenType.VAR) -> varDeclaration()
-            else -> expressionStatement()
-        }
+        val initializer =
+            when {
+                match(TokenType.SEMICOLON) -> null
+                match(TokenType.VAR) -> varDeclaration()
+                else -> expressionStatement()
+            }
 
-        val condition = when {
-            !check(TokenType.SEMICOLON) -> expression()
-            else -> Literal(LoxBoolean(true))
-        }
+        val condition =
+            when {
+                !check(TokenType.SEMICOLON) -> expression()
+                else -> Literal(LoxBoolean(true))
+            }
         consume(TokenType.SEMICOLON, "Expect ';' after loop condition.")
 
-        val increment = when {
-            !check(TokenType.RIGHT_PAREN) -> expression()
-            else -> null
-        }
+        val increment =
+            when {
+                !check(TokenType.RIGHT_PAREN) -> expression()
+                else -> null
+            }
         consume(TokenType.RIGHT_PAREN, "Expect ')' after for clauses.")
 
         var body = statement()
@@ -173,8 +181,8 @@ class Parser(
      *           | "{" block
      *           | expressionStatement
      */
-    private fun statement(): Stmt {
-        return when {
+    private fun statement(): Stmt =
+        when {
             match(TokenType.FOR) -> forStatement()
             match(TokenType.IF) -> ifStatement()
             match(TokenType.PRINT) -> printStatement()
@@ -184,7 +192,6 @@ class Parser(
             match(TokenType.LEFT_BRACE) -> Block(block())
             else -> expressionStatement()
         }
-    }
 
     /**
      * ifStatement → "if" "(" expression ")" statement ( "else" statement )?
@@ -231,11 +238,12 @@ class Parser(
                 consume(TokenType.SEMICOLON, "Expect ';' after value.")
                 Expression(expression)
             }
-            Mode.REPL -> when {
-                match(TokenType.SEMICOLON) -> Expression(expression)
-                isAtEnd() -> Print(expression)
-                else -> throw error(peek(), "Invalid expression or missing ';' after value.")
-            }
+            Mode.REPL ->
+                when {
+                    match(TokenType.SEMICOLON) -> Expression(expression)
+                    isAtEnd() -> Print(expression)
+                    else -> throw error(peek(), "Invalid expression or missing ';' after value.")
+                }
         }
     }
 
@@ -255,19 +263,20 @@ class Parser(
     /**
      * parameters → IDENTIFIER ( "," IDENTIFIER )*
      */
-    private fun parameters(): List<Token> {
-        return if (check(TokenType.RIGHT_PAREN)) {
+    private fun parameters(): List<Token> =
+        if (check(TokenType.RIGHT_PAREN)) {
             emptyList()
-        } else buildList {
-            do {
-                if (size >= Lox.MAX_ARGUMENTS) {
-                    error(peek(), "Can't have more than ${Lox.MAX_ARGUMENTS} parameters.")
-                }
+        } else {
+            buildList {
+                do {
+                    if (size >= Lox.MAX_ARGUMENTS) {
+                        error(peek(), "Can't have more than ${Lox.MAX_ARGUMENTS} parameters.")
+                    }
 
-                add(consume(TokenType.IDENTIFIER, "Expect parameter name."))
-            } while (match(TokenType.COMMA))
+                    add(consume(TokenType.IDENTIFIER, "Expect parameter name."))
+                } while (match(TokenType.COMMA))
+            }
         }
-    }
 
     private fun breakStatement(): Stmt {
         val keyword = previous()
@@ -278,16 +287,17 @@ class Parser(
     /**
      * block → declaration* "}"
      */
-    private fun block(): List<Stmt> = buildList {
-        while (!check(TokenType.RIGHT_BRACE) && !isAtEnd()) {
-            val decl = declaration()
-            if (decl != null) {
-                add(decl)
+    private fun block(): List<Stmt> =
+        buildList {
+            while (!check(TokenType.RIGHT_BRACE) && !isAtEnd()) {
+                val decl = declaration()
+                if (decl != null) {
+                    add(decl)
+                }
             }
-        }
 
-        consume(TokenType.RIGHT_BRACE, "Expect '}' after block.")
-    }
+            consume(TokenType.RIGHT_BRACE, "Expect '}' after block.")
+        }
 
     /**
      * expression → conditional ( "," conditional )*
@@ -440,15 +450,14 @@ class Parser(
      * unary → ( "!" | "-" ) unary
      *       | call
      */
-    private fun unary(): Expr {
-        return if (match(TokenType.BANG, TokenType.MINUS)) {
+    private fun unary(): Expr =
+        if (match(TokenType.BANG, TokenType.MINUS)) {
             val operator = previous()
             val right = unary()
             Unary(operator, right)
         } else {
             call()
         }
-    }
 
     /**
      * call → primary ( "(" finishCall | "." IDENTIFIER )*
@@ -474,16 +483,19 @@ class Parser(
      * finishCall → argument ( "," argument )*
      */
     private fun finishCall(callee: Expr): Expr {
-        val arguments = if (check(TokenType.RIGHT_PAREN)) {
-            emptyList()
-        } else buildList {
-            if (size >= Lox.MAX_ARGUMENTS) {
-                error(peek(), "Can't have more than ${Lox.MAX_ARGUMENTS} arguments.")
+        val arguments =
+            if (check(TokenType.RIGHT_PAREN)) {
+                emptyList()
+            } else {
+                buildList {
+                    if (size >= Lox.MAX_ARGUMENTS) {
+                        error(peek(), "Can't have more than ${Lox.MAX_ARGUMENTS} arguments.")
+                    }
+                    do {
+                        add(argument())
+                    } while (match(TokenType.COMMA))
+                }
             }
-            do {
-                add(argument())
-            } while (match(TokenType.COMMA))
-        }
 
         val paren = consume(TokenType.RIGHT_PAREN, "Expect ')' after arguments.")
 
@@ -505,8 +517,8 @@ class Parser(
      *         | "super" "." IDENTIFIER
      *         | IDENTIFIER
      */
-    private fun primary(): Expr {
-        return when {
+    private fun primary(): Expr =
+        when {
             match(TokenType.NUMBER, TokenType.STRING) -> Literal(previous().literal ?: LoxNil)
             match(TokenType.TRUE) -> Literal(LoxBoolean(true))
             match(TokenType.FALSE) -> Literal(LoxBoolean(false))
@@ -527,31 +539,30 @@ class Parser(
             match(TokenType.IDENTIFIER) -> Variable(previous())
             else -> throw error(peek(), "Expect expression.")
         }
-    }
 
-    private fun match(vararg types: TokenType): Boolean {
-        return types.any { type -> check(type) }.also { isMatched ->
+    private fun match(vararg types: TokenType): Boolean =
+        types.any { type -> check(type) }.also { isMatched ->
             if (isMatched) {
                 advance()
             }
         }
-    }
 
-    private fun consume(type: TokenType, message: String): Token {
-        return if (check(type)) {
+    private fun consume(
+        type: TokenType,
+        message: String,
+    ): Token =
+        if (check(type)) {
             advance()
         } else {
             throw error(peek(), message)
         }
-    }
 
-    private fun check(type: TokenType): Boolean {
-        return if (isAtEnd()) {
+    private fun check(type: TokenType): Boolean =
+        if (isAtEnd()) {
             false
         } else {
             peek().type == type
         }
-    }
 
     private fun advance(): Token {
         if (!isAtEnd()) current++
@@ -564,10 +575,15 @@ class Parser(
     }
 
     private fun isAtEnd(): Boolean = peek().type == TokenType.EOF
+
     private fun peek(): Token = tokens[current]
+
     private fun previous(): Token = tokens[current - 1]
 
-    private fun error(token: Token, message: String): ParseError {
+    private fun error(
+        token: Token,
+        message: String,
+    ): ParseError {
         Lox.error(token, message)
         return ParseError()
     }
@@ -587,7 +603,7 @@ class Parser(
                 TokenType.WHILE,
                 TokenType.PRINT,
                 TokenType.RETURN,
-                    -> return
+                -> return
                 else -> Unit
             }
 

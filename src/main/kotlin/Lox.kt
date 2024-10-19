@@ -39,7 +39,10 @@ object Lox {
         }
     }
 
-    private fun run(source: String, mode: Parser.Mode) {
+    private fun run(
+        source: String,
+        mode: Parser.Mode,
+    ) {
         val scanner = Scanner(source)
         val tokens = scanner.scanTokens()
         val parser = Parser(tokens, mode)
@@ -57,11 +60,18 @@ object Lox {
         interpreter.interpret(statements)
     }
 
-    fun error(line: Int, column: Int, message: String) {
+    fun error(
+        line: Int,
+        column: Int,
+        message: String,
+    ) {
         report(line, column, "", message)
     }
 
-    fun error(token: Token, message: String) {
+    fun error(
+        token: Token,
+        message: String,
+    ) {
         if (token.type == TokenType.EOF) {
             report(token.line, token.column, " at end", message)
         } else {
@@ -76,7 +86,12 @@ object Lox {
         hadRuntimeError = true
     }
 
-    private fun report(line: Int, column: Int, where: String, message: String) {
+    private fun report(
+        line: Int,
+        column: Int,
+        where: String,
+        message: String,
+    ) {
         System.err.println("[$line:$column] Error$where: $message")
         hadError = true
     }

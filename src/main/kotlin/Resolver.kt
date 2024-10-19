@@ -2,7 +2,8 @@ package cz.vojtasii.lox
 
 class Resolver(
     private val interpreter: Interpreter,
-) : ExprVisitor<Unit>, StmtVisitor<Unit> {
+) : ExprVisitor<Unit>,
+    StmtVisitor<Unit> {
     private val scopes = ArrayDeque<MutableMap<String, VarDef>>()
     private var currentFunction = FunctionType.NONE
     private var currentClass = ClassType.NONE
@@ -19,9 +20,10 @@ class Resolver(
                 visit(stmt.statements)
                 endScope()
             }
-            is Break -> if (currentLoop == LoopType.NONE) {
-                Lox.error(stmt.keyword, "Can't break outside loop.")
-            }
+            is Break ->
+                if (currentLoop == LoopType.NONE) {
+                    Lox.error(stmt.keyword, "Can't break outside loop.")
+                }
             is Class -> {
                 val enclosingClass = currentClass
                 currentClass = ClassType.CLASS
@@ -53,10 +55,11 @@ class Resolver(
                 }
 
                 for (method in stmt.methods) {
-                    val declaration = when (method.name.lexeme) {
-                        "init" -> FunctionType.INITIALIZER
-                        else -> FunctionType.METHOD
-                    }
+                    val declaration =
+                        when (method.name.lexeme) {
+                            "init" -> FunctionType.INITIALIZER
+                            else -> FunctionType.METHOD
+                        }
 
                     resolveFunction(method.params, method.body, declaration)
                 }
@@ -139,12 +142,16 @@ class Resolver(
             }
             is Super -> {
                 when (currentClass) {
-                    ClassType.NONE -> Lox.error(
-                        expr.keyword, "Can't use 'super' outside of a class."
-                    )
-                    ClassType.CLASS -> Lox.error(
-                        expr.keyword, "Can't use 'super' in a class with no superclass."
-                    )
+                    ClassType.NONE ->
+                        Lox.error(
+                            expr.keyword,
+                            "Can't use 'super' outside of a class.",
+                        )
+                    ClassType.CLASS ->
+                        Lox.error(
+                            expr.keyword,
+                            "Can't use 'super' in a class with no superclass.",
+                        )
                     ClassType.SUBCLASS -> Unit
                 }
 
@@ -198,7 +205,11 @@ class Resolver(
         scope[name.lexeme] = VarDef(name, VarState.DEFINED)
     }
 
-    private fun resolveFunction(params: List<Token>, body: List<Stmt>, type: FunctionType) {
+    private fun resolveFunction(
+        params: List<Token>,
+        body: List<Stmt>,
+        type: FunctionType,
+    ) {
         val enclosingFunction = currentFunction
         currentFunction = type
 
@@ -212,10 +223,14 @@ class Resolver(
         currentFunction = enclosingFunction
     }
 
-    private fun resolveLocal(expr: Expr, name: Token) {
-        val (index, scope) = scopes.withIndex().lastOrNull { (_, scope) ->
-            scope.containsKey(name.lexeme)
-        } ?: return
+    private fun resolveLocal(
+        expr: Expr,
+        name: Token,
+    ) {
+        val (index, scope) =
+            scopes.withIndex().lastOrNull { (_, scope) ->
+                scope.containsKey(name.lexeme)
+            } ?: return
 
         scope.computeIfPresent(name.lexeme) { _, variable ->
             variable.copy(state = VarState.USED)
@@ -224,9 +239,14 @@ class Resolver(
         interpreter.resolve(expr, scopes.size - 1 - index)
     }
 
-    private data class VarDef(val name: Token, val state: VarState)
+    private data class VarDef(
+        val name: Token,
+        val state: VarState,
+    )
 
     private enum class VarState {
-        DECLARED, DEFINED, USED;
+        DECLARED,
+        DEFINED,
+        USED,
     }
 }
